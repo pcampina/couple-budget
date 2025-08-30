@@ -123,7 +123,17 @@ input {
   color: $ink-soft;
   font-weight: 600;
   letter-spacing: .2px;
-  // Removed participant-specific color variants (.p1/.p2) in favor of generic chips
+
+  &.p1 {
+    background: rgba($p1, .10);
+    border-color: rgba($p1, .35);
+    color: #86fff3;
+  }
+  &.p2 {
+    background: rgba($p2, .12);
+    border-color: rgba($p2, .35);
+    color: #ffd78a;
+  }
 }
 
 /* Add row */
@@ -215,6 +225,8 @@ input {
   color: $ink;
 
   &.num   { text-align: right; }
+  &.p1    { color: $p1; }
+  &.p2    { color: $p2; }
   &.actions { text-align: right; }
 }
 
