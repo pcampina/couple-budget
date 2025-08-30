@@ -9,8 +9,8 @@ function uid() {
 @Injectable({ providedIn: 'root' })
 export class BudgetStore {
   private readonly _participants = signal<Participant[]>([
-    { id: uid(), name: 'Pablo', income: 2000 },
-    { id: uid(), name: 'Tamires', income: 1600 },
+    { id: uid(), name: 'John Doe', income: 2000 },
+    { id: uid(), name: 'Jane Doe', income: 1600 },
   ]);
   readonly participants = computed(() => this._participants());
   readonly participantCount = computed(() => this._participants().length);

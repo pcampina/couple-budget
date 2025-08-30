@@ -1,5 +1,12 @@
 # CoupleBudget
 
+[![Deploy to GitHub Pages](https://github.com/pcampina/couple-budget/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/pcampina/couple-budget/actions/workflows/deploy-pages.yml)
+
+## Demo
+
+- Live: https://pcampina.github.io/couple-budget/
+  - Deployed automatically on every push to `main` via GitHub Actions.
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.1.
 
 ## Overview

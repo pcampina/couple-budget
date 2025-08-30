@@ -1,4 +1,4 @@
-import { Component, inject } from '@angular/core';
+import { Component, ViewEncapsulation, inject } from '@angular/core';
 import { CurrencyPipe, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { BudgetStore } from './application/budget.store';
@@ -6,6 +6,7 @@ import { BudgetStore } from './application/budget.store';
 @Component({
   selector: 'app-root',
   imports: [FormsModule, CurrencyPipe, DecimalPipe],
+  encapsulation: ViewEncapsulation.None,
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })

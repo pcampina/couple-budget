@@ -22,7 +22,12 @@ const config: Config = {
     '^@application/(.*)$': '<rootDir>/src/app/application/$1'
   },
   testMatch: ['**/*.spec.ts'],
-  collectCoverageFrom: ['src/app/**/*.{ts,html}']
+  collectCoverageFrom: ['src/app/**/*.ts'],
+  coverageThreshold: {
+    global: {
+      lines: 100
+    }
+  }
 };
 
 export default config;
