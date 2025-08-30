@@ -68,6 +68,16 @@ describe('BudgetStore (signals, multi-participant)', () => {
     expect(store.expenses().find(e => e.id === id)).toBeUndefined();
   });
 
+  it('updates name and handles update when id not found', () => {
+    const firstId = store.participants()[0].id;
+    store.setParticipantName(firstId, '  Alice  ');
+    expect(store.participants()[0].name).toBe('Alice');
+
+    const beforeLen = store.expenses().length;
+    store.updateExpense('nope', { total: 999 });
+    expect(store.expenses().length).toBe(beforeLen);
+  });
+
   it('adds/removes participant and keeps at least two', () => {
     const before = store.participants().length;
     store.addParticipant('Ana', 1000);
@@ -79,5 +89,32 @@ describe('BudgetStore (signals, multi-participant)', () => {
     store.removeParticipant(id1);
     store.removeParticipant(id2); // should be ignored to keep at least two
     expect(store.participants().length).toBeGreaterThanOrEqual(1); // at least one removal applied
+  });
+
+  it('covers computed fields and persistence branches', () => {
+    // Access all computed to ensure they are exercised
+    expect(store.totalIncome()).toBeGreaterThan(0);
+    expect(store.participantShares().length).toBeGreaterThan(0);
+    expect(store.expensesWithAllocations().length).toBeGreaterThan(0);
+    expect(store.totalExpenses()).toBeGreaterThan(0);
+
+    // Prepare a saved state to trigger loadState path fully
+    const key = 'couple-budget/state/v1';
+    const saved = {
+      participants: [
+        { id: 'x', name: 'X', income: 500 },
+        { id: 'y', name: 'Y', income: 1500 }
+      ],
+      expenses: [
+        { id: 'e1', name: 'Rent', total: 1000 }
+      ]
+    };
+    localStorage.setItem(key, JSON.stringify(saved));
+    const s2 = new BudgetStore();
+    expect(s2.participants().map(p => p.id)).toEqual(['x', 'y']);
+    expect(s2.totalIncome()).toBe(2000);
+    expect(s2.totalExpenses()).toBe(1000);
+    const totalsMap = s2.totalsPerParticipant();
+    expect(totalsMap['x'] + totalsMap['y']).toBeCloseTo(1000, 5);
   });
 });
