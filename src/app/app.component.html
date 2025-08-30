@@ -14,7 +14,7 @@
             <input [value]="p.name" (change)="store.setParticipantName(p.id, $any($event.target).value)"/>
           </label>
           <label>
-            <span>Income (€)</span>
+            <span>Income ({{ 'EUR' | currency:'EUR':'symbol':'1.0-0' | slice:0:1 }})</span>
             <input type="number" step="0.01" [ngModel]="p.income" (ngModelChange)="store.setParticipantIncome(p.id, $event)" />
           </label>
           <div style="margin-top:8px">
