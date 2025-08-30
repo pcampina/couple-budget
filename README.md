@@ -2,6 +2,12 @@
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.1.
 
+## Overview
+
+- Multi-participant budgeting: expenses are split proportionally by each participant's income.
+- Participants are dynamic: starts with two, you can add/remove more (guard keeps at least two).
+- State persistence: participants and expenses persist to `localStorage`.
+
 ## Development server
 
 To start a local development server, run:
@@ -38,10 +44,19 @@ This will compile your project and store the build artifacts in the `dist/` dire
 
 ## Running unit tests
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+This project uses Jest for unit tests.
+
+Scripts:
 
 ```bash
-ng test
+# Run all tests once
+npm test
+
+# Watch mode
+npm run test:watch
+
+# CI mode (single-threaded)
+npm run test:ci
 ```
 
 ## Running end-to-end tests
@@ -54,6 +69,26 @@ ng e2e
 
 Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
 
+## Notes
+
+- The Angular CLI `test` target (Karma) was removed from `angular.json` to avoid confusion, since Jest is used instead. Use the npm scripts above to run tests.
+
 ## Additional Resources
 
 For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+
+## Domain model
+
+- `Participant`: `{ id, name, income }`
+- `Expense`: `{ id, name, total }`
+- Split logic: `splitByIncome(total, participants[]) -> Record<participantId, amount>`
+
+## Persistence
+
+- The `BudgetStore` saves `{ participants, expenses }` under the key `couple-budget/state/v1` in `localStorage`.
+- On startup, it attempts to load and validate persisted state (non-negative values, at least two participants).
+
+## UI behavior
+
+- Configuration: edit participant names and incomes; add/remove participants.
+- Expenses table: dynamically renders a column per participant, with totals per participant in the footer.

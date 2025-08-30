@@ -2,7 +2,9 @@
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "outDir": "./out-tsc/spec",
-    "types": ["jest", "node"]
+    "types": ["jest", "node"],
+    "module": "ESNext",
+    "moduleResolution": "NodeNext"
   },
   "files": ["setup-jest.ts"],
   "include": ["src/**/*.spec.ts", "src/**/*.d.ts"]

@@ -1,3 +1,1 @@
-import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
-
-setupZoneTestEnv();
+// Intentionally left minimal to avoid pulling Angular ESM testing modules.

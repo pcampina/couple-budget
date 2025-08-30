@@ -7,21 +7,31 @@
   <section class="card">
     <h2>Configuration</h2>
     <div class="grid">
-      <label>
-        <span>Salary 1 (Pablo)</span>
-        <input type="number" step="0.01" [ngModel]="store.salary1()" (ngModelChange)="store.setSalary1($event)" />
-      </label>
-
-      <label>
-        <span>Salary 2 (Tamires)</span>
-        <input type="number" step="0.01" [ngModel]="store.salary2()" (ngModelChange)="store.setSalary2($event)" />
-      </label>
+      @for (p of store.participants(); track p.id) {
+        <div>
+          <label>
+            <span>Person name</span>
+            <input [value]="p.name" (change)="store.setParticipantName(p.id, $any($event.target).value)"/>
+          </label>
+          <label>
+            <span>Income (€)</span>
+            <input type="number" step="0.01" [ngModel]="p.income" (ngModelChange)="store.setParticipantIncome(p.id, $event)" />
+          </label>
+          <div style="margin-top:8px">
+            <button class="btn btn--ghost" (click)="store.removeParticipant(p.id)" [disabled]="store.participantCount() <= 2">Remove</button>
+          </div>
+        </div>
+      }
+    </div>
+    <div style="margin-top:12px">
+      <button class="btn" (click)="store.addParticipant()">Add person</button>
     </div>
 
     <div class="chips">
       <span class="chip">Total: {{ store.totalIncome() | currency:'EUR':'symbol':'1.2-2' }}</span>
-      <span class="chip p1">Pablo: {{ (store.p1Share() * 100) | number:'1.0-2' }}%</span>
-      <span class="chip p2">Tamires: {{ (store.p2Share() * 100) | number:'1.0-2' }}%</span>
+      @for (s of store.participantShares(); track s.id) {
+        <span class="chip">{{ s.name }}: {{ (s.share * 100) | number:'1.0-2' }}%</span>
+      }
     </div>
   </section>
 
@@ -36,18 +46,19 @@
 
     <div class="table" role="table" aria-label="Expense list">
       <div class="thead" role="rowgroup">
-        <div class="tr" role="row">
+        <div class="tr" role="row" [style.grid-template-columns]="gridTemplateColumns()">
           <div class="th" role="columnheader">Expense</div>
           <div class="th num" role="columnheader">Total amount (€)</div>
-          <div class="th num p1" role="columnheader">Pablo (Salary 1)</div>
-          <div class="th num p2" role="columnheader">Tamires (Salary 2)</div>
+          @for (p of store.participants(); track p.id) {
+            <div class="th num" role="columnheader">{{ p.name }}</div>
+          }
           <div class="th" role="columnheader"></div>
         </div>
       </div>
 
       <div class="tbody" role="rowgroup">
-        @for (e of store.expensesWithSplits(); track e.id) {
-          <div class="tr" role="row">
+        @for (e of store.expensesWithAllocations(); track e.id) {
+          <div class="tr" role="row" [style.grid-template-columns]="gridTemplateColumns()">
             <div class="td">
               <input class="cell-input" [value]="e.name" (change)="store.updateExpense(e.id, { name: $any($event.target).value })"/>
             </div>
@@ -56,22 +67,24 @@
                       [value]="e.total"
                       (change)="store.updateExpense(e.id, { total: toNumber($any($event.target).value) })"/>
             </div>
-            <div class="td num p1">{{ e.p1 | currency:'EUR':'symbol':'1.2-2' }}</div>
-            <div class="td num p2">{{ e.p2 | currency:'EUR':'symbol':'1.2-2' }}</div>
+            @for (p of store.participants(); track p.id) {
+              <div class="td num">{{ e.allocations[p.id] | currency:'EUR':'symbol':'1.2-2' }}</div>
+            }
             <div class="td actions"><button class="link" (click)="store.removeExpense(e.id)">remove</button></div>
           </div>
         }
-        @if (store.expensesWithSplits().length === 0) {
+        @if (store.expensesWithAllocations().length === 0) {
           <div class="tr empty"><div class="td" colspan="5">No expenses yet.</div></div>
         }
       </div>
 
       <div class="tfoot" role="rowgroup">
-        <div class="tr">
+        <div class="tr" [style.grid-template-columns]="gridTemplateColumns()">
           <div class="td bold">Totals</div>
           <div class="td num bold">{{ store.totalExpenses() | currency:'EUR':'symbol':'1.2-2' }}</div>
-          <div class="td num p1 bold">{{ store.totalP1() | currency:'EUR':'symbol':'1.2-2' }}</div>
-          <div class="td num p2 bold">{{ store.totalP2() | currency:'EUR':'symbol':'1.2-2' }}</div>
+          @for (p of store.participants(); track p.id) {
+            <div class="td num bold">{{ store.totalsPerParticipant()[p.id] | currency:'EUR':'symbol':'1.2-2' }}</div>
+          }
           <div class="td"></div>
         </div>
       </div>

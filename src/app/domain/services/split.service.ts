@@ -1,9 +1,15 @@
-export function splitByIncome(total: number, s1: number, s2: number) {
-  const sum = s1 + s2;
-  if (!isFinite(total) || total <= 0 || sum <= 0) {
-    return { p1: 0, p2: 0 };
+import { AllocationByParticipant, Participant } from '@domain/models';
+
+export function splitByIncome(total: number, participants: Pick<Participant, 'id' | 'income'>[]): AllocationByParticipant {
+  const incomeSum = participants.reduce((acc, p) => acc + (p.income || 0), 0);
+  if (!isFinite(total) || total <= 0 || incomeSum <= 0) {
+    return participants.reduce<AllocationByParticipant>((map, p) => {
+      map[p.id] = 0;
+      return map;
+    }, {} as AllocationByParticipant);
   }
-  const p1 = (s1 / sum) * total;
-  const p2 = (s2 / sum) * total;
-  return { p1, p2 };
+  return participants.reduce<AllocationByParticipant>((map, p) => {
+    map[p.id] = (p.income / incomeSum) * total;
+    return map;
+  }, {} as AllocationByParticipant);
 }

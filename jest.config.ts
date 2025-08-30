@@ -1,19 +1,18 @@
 import type { Config } from 'jest';
-import { createCjsPreset } from 'jest-preset-angular/presets';
-
-const preset = createCjsPreset();
 
 const config: Config = {
-  ...preset,
   testEnvironment: 'jsdom',
   setupFilesAfterEnv: ['<rootDir>/setup-jest.ts'],
   moduleFileExtensions: ['ts', 'html', 'js', 'json'],
+  extensionsToTreatAsEsm: ['.ts'],
   transform: {
-    '^.+\\.(ts|mjs|js|html)$': [
-      'jest-preset-angular',
+    '^.+\\.(ts|js|html)$': [
+      'ts-jest',
       {
         tsconfig: '<rootDir>/tsconfig.spec.json',
-        stringifyContentPathRegex: '\\.html$'
+        diagnostics: false,
+        useESM: true,
+        stringifyContentPathRegex: '\\.(html)$'
       }
     ]
   },
@@ -22,7 +21,7 @@ const config: Config = {
     '^@domain/(.*)$': '<rootDir>/src/app/domain/$1',
     '^@application/(.*)$': '<rootDir>/src/app/application/$1'
   },
-  testMatch: ['**/__tests__/**/*.spec.ts'],
+  testMatch: ['**/*.spec.ts'],
   collectCoverageFrom: ['src/app/**/*.{ts,html}']
 };
 

@@ -1,4 +1,5 @@
 export type ExpenseId = string;
+export type ParticipantId = string;
 
 export interface Expense {
   id: ExpenseId;
@@ -6,7 +7,10 @@ export interface Expense {
   total: number;
 }
 
-export interface Split {
-  p1: number;
-  p2: number;
+export interface Participant {
+  id: ParticipantId;
+  name: string;
+  income: number;
 }
+
+export type AllocationByParticipant = Record<ParticipantId, number>;
