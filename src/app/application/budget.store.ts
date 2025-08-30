@@ -1,4 +1,4 @@
-import { Injectable, computed, signal } from '@angular/core';
+import { Injectable, computed, effect, signal } from '@angular/core';
 import { Expense, Participant, ParticipantId, AllocationByParticipant } from '../domain/models';
 import { splitByIncome } from '../domain/services/split.service';
 
@@ -85,5 +85,38 @@ export class BudgetStore {
   }
 
   // constructor intentionally empty (persistence added in a later commit)
-  constructor() {}
+  // Persistence (localStorage) --------------------------------------------
+  private readonly STORAGE_KEY = 'couple-budget/state/v1';
+
+  private loadState() {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const raw = localStorage.getItem(this.STORAGE_KEY);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { participants?: Participant[]; expenses?: Expense[] };
+      if (Array.isArray(parsed.participants) && parsed.participants.length >= 2) {
+        this._participants.set(parsed.participants.map(p => ({ ...p, income: Math.max(0, p.income || 0) })));
+      }
+      if (Array.isArray(parsed.expenses)) {
+        this._expenses.set(parsed.expenses.map(e => ({ ...e, total: Math.max(0, e.total || 0) })));
+      }
+    } catch {}
+  }
+
+  private saveState = () => {
+    try {
+      if (typeof localStorage === 'undefined') return;
+      const state = {
+        participants: this._participants(),
+        expenses: this._expenses(),
+      };
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
+    } catch {}
+  };
+
+  // Initialize persistence watchers
+  constructor() {
+    this.loadState();
+    effect(this.saveState);
+  }
 }
