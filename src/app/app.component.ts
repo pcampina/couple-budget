@@ -6,7 +6,6 @@ import { BudgetStore } from './application/budget.store';
 @Component({
   selector: 'app-root',
   imports: [FormsModule, CurrencyPipe, DecimalPipe],
-  providers: [CurrencyPipe, DecimalPipe],
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
 })
@@ -27,5 +26,10 @@ export class AppComponent {
     this.store.addExpense(this.newName, this.newTotal!);
     this.newName = '';
     this.newTotal = null;
+  }
+
+  gridTemplateColumns(): string {
+    const participantCols = Array(this.store.participants().length).fill('1.2fr').join(' ');
+    return `2fr 1.2fr ${participantCols} 88px`;
   }
 }
