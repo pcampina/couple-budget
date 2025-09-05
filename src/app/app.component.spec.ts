@@ -1,5 +1,5 @@
 // Minimal Angular core mocks for component import
-jest.mock('@angular/core', () => {
+vi.mock('@angular/core', () => {
   const Injectable = () => (t: any) => t;
   function makeSignal<T>(initial: T) {
     let value = initial;
@@ -23,8 +23,13 @@ jest.mock('@angular/core', () => {
 });
 
 // Silence Angular common/forms ESM by mocking modules
-jest.mock('@angular/common', () => ({}));
-jest.mock('@angular/forms', () => ({}));
+vi.mock('@angular/common', () => ({
+  CurrencyPipe: class {},
+  DecimalPipe: class {},
+}));
+vi.mock('@angular/forms', () => ({
+  FormsModule: {},
+}));
 
 import { AppComponent } from '@app/app.component';
 
@@ -36,8 +41,8 @@ describe('AppComponent unit', () => {
 
   beforeEach(() => {
     fakeStore = {
-      addExpense: jest.fn(),
-      participants: jest.fn(() => [{ id: 'a' }, { id: 'b' }])
+      addExpense: vi.fn(),
+      participants: vi.fn(() => [{ id: 'a' }, { id: 'b' }])
     };
     comp = new AppComponent();
   });

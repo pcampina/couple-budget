@@ -1,5 +1,5 @@
 // Mock minimal pieces of @angular/core used by the store (signals/computed/Injectable)
-jest.mock('@angular/core', () => {
+vi.mock('@angular/core', () => {
   const Injectable = () => (target: any) => target;
 
   function makeSignal<T>(initial: T) {
@@ -91,30 +91,10 @@ describe('BudgetStore (signals, multi-participant)', () => {
     expect(store.participants().length).toBeGreaterThanOrEqual(1); // at least one removal applied
   });
 
-  it('covers computed fields and persistence branches', () => {
-    // Access all computed to ensure they are exercised
+  it('covers computed fields (no localStorage persistence)', () => {
     expect(store.totalIncome()).toBeGreaterThan(0);
     expect(store.participantShares().length).toBeGreaterThan(0);
     expect(store.expensesWithAllocations().length).toBeGreaterThan(0);
     expect(store.totalExpenses()).toBeGreaterThan(0);
-
-    // Prepare a saved state to trigger loadState path fully
-    const key = 'couple-budget/state/v1';
-    const saved = {
-      participants: [
-        { id: 'x', name: 'X', income: 500 },
-        { id: 'y', name: 'Y', income: 1500 }
-      ],
-      expenses: [
-        { id: 'e1', name: 'Rent', total: 1000 }
-      ]
-    };
-    localStorage.setItem(key, JSON.stringify(saved));
-    const s2 = new BudgetStore();
-    expect(s2.participants().map(p => p.id)).toEqual(['x', 'y']);
-    expect(s2.totalIncome()).toBe(2000);
-    expect(s2.totalExpenses()).toBe(1000);
-    const totalsMap = s2.totalsPerParticipant();
-    expect(totalsMap['x'] + totalsMap['y']).toBeCloseTo(1000, 5);
   });
 });

@@ -1,13 +1,25 @@
 // Mock Angular core + animations to import config without ESM issues
-jest.mock('@angular/core', () => ({
+vi.mock('@angular/core', () => ({
   LOCALE_ID: 'LOCALE_ID',
   provideBrowserGlobalErrorListeners: () => 'error-listeners',
+  Injectable: () => (t: any) => t,
+  inject: () => undefined,
 }))
-jest.mock('@angular/platform-browser/animations', () => ({
+vi.mock('@angular/platform-browser/animations', () => ({
   provideAnimations: () => 'animations',
+}))
+vi.mock('@angular/common/http', () => ({
+  provideHttpClient: () => 'http',
+  withInterceptors: () => (x: any) => x,
+}))
+vi.mock('@angular/router', () => ({
+  provideRouter: () => 'router',
 }))
 
 import { appConfig } from '@app/app.config';
+// Mock local components used in route definitions to avoid Angular JIT
+vi.mock('./login.component', () => ({ LoginComponent: class {} }))
+vi.mock('./app.component', () => ({ AppComponent: class {} }))
 
 describe('appConfig', () => {
   it('exposes providers including error listeners, animations and locale', () => {
@@ -21,4 +33,3 @@ describe('appConfig', () => {
     expect(localeProv.useValue).toBe('pt-PT');
   });
 });
-
