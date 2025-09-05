@@ -14,6 +14,7 @@ This project was generated using [Angular CLI](https://github.com/angular/angula
 - Multi-participant budgeting: expenses are split proportionally by each participant's income.
 - Participants are dynamic: starts with two, you can add/remove more (guard keeps at least two).
 - State persistence: participants and expenses persist to `localStorage`.
+- API docs: `api/README.md`
 
 ## Development server
 
@@ -51,7 +52,7 @@ This will compile your project and store the build artifacts in the `dist/` dire
 
 ## Running unit tests
 
-This project uses Jest for unit tests.
+This project uses Vitest for unit tests.
 
 Scripts:
 
@@ -62,8 +63,74 @@ npm test
 # Watch mode
 npm run test:watch
 
-# CI mode (single-threaded)
+# CI mode
 npm run test:ci
+
+Environment: jsdom; path aliases mirror `tsconfig.json`.
+
+### API Server
+
+This repository now includes a minimal Node HTTP API that exposes the core budgeting features (participants, expenses, allocations) with no external dependencies.
+
+- Full API docs: `api/README.md`
+
+Run the API locally:
+
+```bash
+npm run api
+```
+
+It starts on `http://localhost:3333` with CORS enabled. Endpoints:
+
+- GET `/participants` — list participants
+- POST `/participants` — `{ name, income }`
+- PATCH `/participants/:id` — partial update `{ name?, income? }`
+- DELETE `/participants/:id`
+- GET `/expenses` — list expenses
+- POST `/expenses` — `{ name, total }`
+- PATCH `/expenses/:id` — partial update `{ name?, total? }`
+- DELETE `/expenses/:id`
+- GET `/stats` — snapshot with `participants`, `expenses`, `participantShares`, `expensesWithAllocations`, `totalIncome`, `totalExpenses`, `totalsPerParticipant`
+
+Note: Data is kept in-memory for simplicity.
+
+#### Authentication (Supabase)
+
+- Backend (API): set `AUTH_JWT_SECRET` to enable JWT validation (HS256). When not set, auth is disabled for local/dev.
+- Roles: GET endpoints require `user`; mutations (POST/PATCH/DELETE) require `admin` in `app_metadata.roles`.
+- Frontend: configure Supabase client in `src/index.html` (see snippet below) and use the login UI in the header.
+
+Snippet (uncomment in `src/index.html`):
+
+```html
+<script>
+  window.__USE_API__ = true;
+  window.__API_URL__ = 'http://localhost:3333';
+  window.__SUPABASE_URL__ = 'https://YOUR-PROJECT.supabase.co';
+  window.__SUPABASE_ANON_KEY__ = 'YOUR_ANON_KEY';
+</script>
+```
+
+### Frontend Integration
+
+The Angular app can run fully client-side (default) or consume the API.
+
+- Default (client-only): nothing to do. State persists to `localStorage`.
+- API mode: enable the flag in `src/index.html` (uncomment the snippet):
+
+```html
+<script>
+  window.__USE_API__ = true;
+  window.__API_URL__ = 'http://localhost:3333';
+  // start the server with: npm run api
+  // then: npm start
+  // the UI will reflect server state
+  // (participants/expenses are fetched and mutations call the API)
+}
+</script>
+```
+
+In API mode, local `localStorage` persistence is disabled; data lives on the API process.
 ```
 
 ## Running end-to-end tests
@@ -78,7 +145,11 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 
 ## Notes
 
-- The Angular CLI `test` target (Karma) was removed from `angular.json` to avoid confusion, since Jest is used instead. Use the npm scripts above to run tests.
+- Tests run with Vitest; Karma is not used.
+- ID generation: always use `uuid()` helpers
+  - Frontend: `src/app/shared/uuid.ts`
+  - API: `api/utils.ts`
+  - Check locally: `npm run lint:ids` (fails on non-UUID patterns)
 
 ## Additional Resources
 
