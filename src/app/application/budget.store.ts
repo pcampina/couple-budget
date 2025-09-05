@@ -1,16 +1,15 @@
-import { Injectable, computed, effect, signal } from '@angular/core';
+import { Injectable, computed, signal } from '@angular/core';
 import { Expense, Participant, ParticipantId, AllocationByParticipant } from '../domain/models';
 import { splitByIncome } from '../domain/services/split.service';
+import { ApiService } from '../infrastructure/api.service';
+import { uuid } from '../shared/uuid';
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
-}
 
 @Injectable({ providedIn: 'root' })
 export class BudgetStore {
   private readonly _participants = signal<Participant[]>([
-    { id: uid(), name: 'John Doe', income: 2000 },
-    { id: uid(), name: 'Jane Doe', income: 1600 },
+    { id: uuid(), name: 'John Doe', income: 2000 },
+    { id: uuid(), name: 'Jane Doe', income: 1600 },
   ]);
   readonly participants = computed(() => this._participants());
   readonly participantCount = computed(() => this._participants().length);
@@ -22,7 +21,7 @@ export class BudgetStore {
   });
 
   private readonly _expenses = signal<Expense[]>([
-    { id: uid(), name: 'Aluguel', total: 1200 }
+    { id: uuid(), name: 'Aluguel', total: 1200 }
   ]);
   readonly expenses = computed(() => this._expenses());
 
@@ -44,29 +43,77 @@ export class BudgetStore {
     return totals;
   });
 
+  private readonly useApi = typeof window !== 'undefined' && (window as any).__USE_API__ === true;
+
+  private async refreshFromApi() {
+    // no-op if not using API or service not provided
+    try {
+      if (!this.api || !this.useApi) return;
+      const stats = await this.api.getStats();
+      this._participants.set(stats.participants.map(p => ({ id: p.id, name: p.name, income: p.income })));
+      this._expenses.set(stats.expenses.map(e => ({ id: e.id, name: e.name, total: e.total })));
+    } catch {}
+  }
+
   setParticipantIncome(id: ParticipantId, income: number) {
+    if (this.api && this.useApi) {
+      this.api.updateParticipant(id, { income: Math.max(0, income || 0) })
+        .then(() => this.refreshFromApi())
+        .catch(() => {});
+      return;
+    }
     this._participants.update(list => list.map(p => p.id === id ? { ...p, income: Math.max(0, income || 0) } : p));
   }
 
   setParticipantName(id: ParticipantId, name: string) {
+    if (this.api && this.useApi) {
+      this.api.updateParticipant(id, { name: name.trim() })
+        .then(() => this.refreshFromApi())
+        .catch(() => {});
+      return;
+    }
     this._participants.update(list => list.map(p => p.id === id ? { ...p, name: name.trim() } : p));
   }
 
   addParticipant(name = `Pessoa ${this._participants().length + 1}`, income = 0) {
-    const p: Participant = { id: uid(), name: name.trim(), income: Math.max(0, income || 0) };
+    if (this.api && this.useApi) {
+      this.api.addParticipant(name.trim(), Math.max(0, income || 0))
+        .then(() => this.refreshFromApi())
+        .catch(() => {});
+      return;
+    }
+    const p: Participant = { id: uuid(), name: name.trim(), income: Math.max(0, income || 0) };
     this._participants.update(list => [...list, p]);
   }
 
   removeParticipant(id: ParticipantId) {
+    if (this.api && this.useApi) {
+      this.api.deleteParticipant(id)
+        .then(() => this.refreshFromApi())
+        .catch(() => {});
+      return;
+    }
     this._participants.update(list => list.length <= 2 ? list : list.filter(p => p.id !== id));
   }
 
   addExpense(name: string, total: number) {
-    const e: Expense = { id: uid(), name: name.trim(), total: Math.max(0, total || 0) };
+    if (this.api && this.useApi) {
+      this.api.addExpense(name.trim(), Math.max(0, total || 0))
+        .then(() => this.refreshFromApi())
+        .catch(() => {});
+      return;
+    }
+    const e: Expense = { id: uuid(), name: name.trim(), total: Math.max(0, total || 0) };
     this._expenses.update(list => [...list, e]);
   }
 
   updateExpense(id: string, patch: Partial<Expense>) {
+    if (this.api && this.useApi) {
+      this.api.updateExpense(id, patch)
+        .then(() => this.refreshFromApi())
+        .catch(() => {});
+      return;
+    }
     this._expenses.update(list => {
       const i = list.findIndex(e => e.id === id);
       if (i >= 0) {
@@ -81,42 +128,19 @@ export class BudgetStore {
   }
 
   removeExpense(id: string) {
+    if (this.api && this.useApi) {
+      this.api.deleteExpense(id)
+        .then(() => this.refreshFromApi())
+        .catch(() => {});
+      return;
+    }
     this._expenses.update(list => list.filter(e => e.id !== id));
   }
 
-  // constructor intentionally empty (persistence added in a later commit)
-  // Persistence (localStorage) --------------------------------------------
-  private readonly STORAGE_KEY = 'couple-budget/state/v1';
-
-  private loadState() {
-    try {
-      if (typeof localStorage === 'undefined') return;
-      const raw = localStorage.getItem(this.STORAGE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as { participants?: Participant[]; expenses?: Expense[] };
-      if (Array.isArray(parsed.participants) && parsed.participants.length >= 2) {
-        this._participants.set(parsed.participants.map(p => ({ ...p, income: Math.max(0, p.income || 0) })));
-      }
-      if (Array.isArray(parsed.expenses)) {
-        this._expenses.set(parsed.expenses.map(e => ({ ...e, total: Math.max(0, e.total || 0) })));
-      }
-    } catch {}
-  }
-
-  private saveState = () => {
-    try {
-      if (typeof localStorage === 'undefined') return;
-      const state = {
-        participants: this._participants(),
-        expenses: this._expenses(),
-      };
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(state));
-    } catch {}
-  };
-
-  // Initialize persistence watchers
-  constructor() {
-    this.loadState();
-    effect(this.saveState);
+  // Initialize (no localStorage persistence)
+  constructor(private api?: ApiService) {
+    if (this.api && this.useApi) {
+      this.refreshFromApi();
+    }
   }
 }
