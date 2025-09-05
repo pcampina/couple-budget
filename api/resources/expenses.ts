@@ -5,7 +5,7 @@ import { budgetRepo } from '../repositories/budgetRepo';
 
 export function registerExpenses(router: Router): void {
   router.add('GET', '/expenses', withAuth('user', async (req, res) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const rows = await repo.listExpenses(budgetId);
@@ -13,7 +13,7 @@ export function registerExpenses(router: Router): void {
   }) as any);
 
   router.add('POST', '/expenses', withAuth('admin', async (req, res) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
     type Body = { name?: string; total?: number };
@@ -25,7 +25,7 @@ export function registerExpenses(router: Router): void {
   }) as any);
 
   router.add('PATCH', '/expenses/:id', withAuth('admin', async (req, res, params) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
     type Body = { name?: string; total?: number };
@@ -39,7 +39,7 @@ export function registerExpenses(router: Router): void {
   }) as any);
 
   router.add('DELETE', '/expenses/:id', withAuth('admin', async (req, res, params) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
     await repo.deleteExpense(budgetId, params.id);

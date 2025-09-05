@@ -6,22 +6,23 @@
 
   <section class="budget__section card card--glass" style="max-width:520px;margin-inline:auto;">
     <h2>Login</h2>
-    <div class="form-grid">
-      <label>
-        <span>Email</span>
-        <input class="input" placeholder="email" [(ngModel)]="email" name="email" />
-      </label>
-      <label>
-        <span>Password</span>
-        <input class="input" placeholder="password" type="password" [(ngModel)]="password" name="password" />
-      </label>
-    </div>
-    <div style="margin-top:12px">
-      <button class="button button--success" type="button" (click)="login()">Login</button>
-      @if (error) {
-        <p class="text text--danger" style="margin-top:8px">{{ error }}</p>
-      }
-    </div>
+    <form (submit)="$event.preventDefault(); login()">
+      <div class="form-grid">
+        <label>
+          <span>Email</span>
+          <input class="input" placeholder="email" [(ngModel)]="email" name="email" (keyup.enter)="login()" />
+        </label>
+        <label>
+          <span>Password</span>
+          <input class="input" placeholder="password" type="password" [(ngModel)]="password" name="password" (keyup.enter)="login()" />
+        </label>
+      </div>
+      <div style="margin-top:12px">
+        <button class="button button--success" type="submit">Login</button>
+        @if (error) {
+          <p class="text text--danger" style="margin-top:8px">{{ error }}</p>
+        }
+      </div>
+    </form>
   </section>
 </main>
-

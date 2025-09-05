@@ -6,10 +6,7 @@ import { ApiService } from '../infrastructure/api.service';
 
 @Injectable({ providedIn: 'root' })
 export class BudgetStore {
-  private readonly _participants = signal<Participant[]>([
-    { id: (crypto as any).randomUUID(), name: 'John Doe', income: 2000 },
-    { id: (crypto as any).randomUUID(), name: 'Jane Doe', income: 1600 },
-  ]);
+  private readonly _participants = signal<Participant[]>([]);
   readonly participants = computed(() => this._participants());
   readonly participantCount = computed(() => this._participants().length);
 
@@ -19,9 +16,7 @@ export class BudgetStore {
     return this._participants().map(p => ({ id: p.id, name: p.name, share: total > 0 ? p.income / total : 0 }));
   });
 
-  private readonly _expenses = signal<Expense[]>([
-    { id: (crypto as any).randomUUID(), name: 'Aluguel', total: 1200 }
-  ]);
+  private readonly _expenses = signal<Expense[]>([]);
   readonly expenses = computed(() => this._expenses());
 
   readonly expensesWithAllocations = computed(() =>
@@ -44,7 +39,7 @@ export class BudgetStore {
 
   private readonly useApi = typeof window !== 'undefined' && (window as any).__USE_API__ === true;
 
-  private async refreshFromApi() {
+  async refreshFromApi() {
     // no-op if not using API or service not provided
     try {
       if (!this.api || !this.useApi) return;
@@ -54,63 +49,57 @@ export class BudgetStore {
     } catch {}
   }
 
-  setParticipantIncome(id: ParticipantId, income: number) {
+  async setParticipantIncome(id: ParticipantId, income: number): Promise<void> {
     if (this.api && this.useApi) {
-      this.api.updateParticipant(id, { income: Math.max(0, income || 0) })
-        .then(() => this.refreshFromApi())
-        .catch(() => {});
+      await this.api.updateParticipant(id, { income: Math.max(0, income || 0) });
+      await this.refreshFromApi();
       return;
     }
     this._participants.update(list => list.map(p => p.id === id ? { ...p, income: Math.max(0, income || 0) } : p));
   }
 
-  setParticipantName(id: ParticipantId, name: string) {
+  async setParticipantName(id: ParticipantId, name: string): Promise<void> {
     if (this.api && this.useApi) {
-      this.api.updateParticipant(id, { name: name.trim() })
-        .then(() => this.refreshFromApi())
-        .catch(() => {});
+      await this.api.updateParticipant(id, { name: name.trim() });
+      await this.refreshFromApi();
       return;
     }
     this._participants.update(list => list.map(p => p.id === id ? { ...p, name: name.trim() } : p));
   }
 
-  addParticipant(name = `Pessoa ${this._participants().length + 1}`, income = 0) {
+  async addParticipant(name = `Pessoa ${this._participants().length + 1}`, income = 0): Promise<void> {
     if (this.api && this.useApi) {
-      this.api.addParticipant(name.trim(), Math.max(0, income || 0))
-        .then(() => this.refreshFromApi())
-        .catch(() => {});
+      await this.api.addParticipant(name.trim(), Math.max(0, income || 0));
+      await this.refreshFromApi();
       return;
     }
     const p: Participant = { id: (crypto as any).randomUUID(), name: name.trim(), income: Math.max(0, income || 0) };
     this._participants.update(list => [...list, p]);
   }
 
-  removeParticipant(id: ParticipantId) {
+  async removeParticipant(id: ParticipantId): Promise<void> {
     if (this.api && this.useApi) {
-      this.api.deleteParticipant(id)
-        .then(() => this.refreshFromApi())
-        .catch(() => {});
+      await this.api.deleteParticipant(id);
+      await this.refreshFromApi();
       return;
     }
     this._participants.update(list => list.length <= 2 ? list : list.filter(p => p.id !== id));
   }
 
-  addExpense(name: string, total: number) {
+  async addExpense(name: string, total: number): Promise<void> {
     if (this.api && this.useApi) {
-      this.api.addExpense(name.trim(), Math.max(0, total || 0))
-        .then(() => this.refreshFromApi())
-        .catch(() => {});
+      await this.api.addExpense(name.trim(), Math.max(0, total || 0));
+      await this.refreshFromApi();
       return;
     }
     const e: Expense = { id: (crypto as any).randomUUID(), name: name.trim(), total: Math.max(0, total || 0) };
     this._expenses.update(list => [...list, e]);
   }
 
-  updateExpense(id: string, patch: Partial<Expense>) {
+  async updateExpense(id: string, patch: Partial<Expense>): Promise<void> {
     if (this.api && this.useApi) {
-      this.api.updateExpense(id, patch)
-        .then(() => this.refreshFromApi())
-        .catch(() => {});
+      await this.api.updateExpense(id, patch);
+      await this.refreshFromApi();
       return;
     }
     this._expenses.update(list => {
@@ -126,11 +115,10 @@ export class BudgetStore {
     });
   }
 
-  removeExpense(id: string) {
+  async removeExpense(id: string): Promise<void> {
     if (this.api && this.useApi) {
-      this.api.deleteExpense(id)
-        .then(() => this.refreshFromApi())
-        .catch(() => {});
+      await this.api.deleteExpense(id);
+      await this.refreshFromApi();
       return;
     }
     this._expenses.update(list => list.filter(e => e.id !== id));

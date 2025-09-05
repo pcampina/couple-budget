@@ -17,13 +17,8 @@ function memory() {
     if (!b) {
       b = { id: uuid(), owner_user_id: userId, name: 'Default' };
       state.budgets.set(b.id, b);
-      state.participants.set(b.id, [
-        { id: uuid(), budget_id: b.id, name: 'John Doe', income: 2000 },
-        { id: uuid(), budget_id: b.id, name: 'Jane Doe', income: 1600 },
-      ]);
-      state.expenses.set(b.id, [
-        { id: uuid(), budget_id: b.id, name: 'Aluguel', total: 1200 },
-      ]);
+      if (!state.participants.has(b.id)) state.participants.set(b.id, []);
+      if (!state.expenses.has(b.id)) state.expenses.set(b.id, []);
     }
     return b.id;
   }

@@ -29,7 +29,7 @@ async function totalsPerParticipant(budgetId: string) {
 
 export function registerStats(router: Router): void {
   router.add('GET', '/stats', withAuth('user', async (req, res) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const participants = await repo.listParticipants(budgetId);

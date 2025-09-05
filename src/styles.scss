@@ -217,6 +217,13 @@ label span { display: block; font-size: 12px; color: $clr-muted; margin-bottom: 
 
 /* Chips */
 .chip-group { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.spinner { width: 48px; height: 48px; border: 4px solid rgba(255,255,255,0.6); border-top-color: white; border-radius: 50%; animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.toasts { position: fixed; right: 16px; bottom: 16px; display: flex; flex-direction: column; gap: 8px; z-index: 1001; }
+.toast { background: #222; color: #fff; padding: 8px 12px; border-radius: 6px; box-shadow: 0 2px 8px rgba(0,0,0,0.3); }
+.toast--success { background: #2b8a3e; }
+.toast--error { background: #c92a2a; }
 .chip {
   border-radius: 999px; padding: 6px 10px; color: $clr-ink;
   @include glass(18px);

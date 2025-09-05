@@ -6,10 +6,10 @@ import request from 'supertest';
 describe('stats resource', () => {
   const handler = createApp();
 
-  it('returns consistent totals', async () => {
+  it('returns consistent totals (sum allocations == total expenses)', async () => {
     const stats = (await request(handler).get('/stats').expect(200)).body;
-    expect(stats.totalIncome).toBeGreaterThan(0);
-    expect(stats.totalExpenses).toBeGreaterThan(0);
+    expect(stats.totalIncome).toBeGreaterThanOrEqual(0);
+    expect(stats.totalExpenses).toBeGreaterThanOrEqual(0);
     const sumAlloc = Object.values(stats.totalsPerParticipant).reduce((a: number, b: number) => a + b, 0);
     expect(Math.abs(sumAlloc - stats.totalExpenses)).toBeLessThan(0.001);
   });

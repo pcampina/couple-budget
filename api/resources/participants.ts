@@ -5,7 +5,7 @@ import { budgetRepo } from '../repositories/budgetRepo';
 
 export function registerParticipants(router: Router): void {
   router.add('GET', '/participants', withAuth('user', async (req, res) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const rows = await repo.listParticipants(budgetId);
@@ -14,7 +14,7 @@ export function registerParticipants(router: Router): void {
 
   router.add('POST', '/participants', withAuth('admin', async (req, res) => {
     type Body = { name?: string; income?: number };
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const body = await readJson<Body>(req);
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
@@ -25,7 +25,7 @@ export function registerParticipants(router: Router): void {
   }) as any);
 
   router.add('PATCH', '/participants/:id', withAuth('admin', async (req, res, params) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const body = await readJson<{ name?: string; income?: number }>(req);
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
@@ -38,7 +38,7 @@ export function registerParticipants(router: Router): void {
   }) as any);
 
   router.add('DELETE', '/participants/:id', withAuth('admin', async (req, res, params) => {
-    const userId = (req as any).user?.id as string;
+    const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
     await repo.deleteParticipant(budgetId, params.id);

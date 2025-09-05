@@ -10,13 +10,8 @@ export interface State {
 
 function initialState(): State {
   return {
-    participants: [
-      { id: uuid(), name: 'John Doe', income: 2000 },
-      { id: uuid(), name: 'Jane Doe', income: 1600 },
-    ],
-    expenses: [
-      { id: uuid(), name: 'Aluguel', total: 1200 },
-    ],
+    participants: [],
+    expenses: [],
   };
 }
 
