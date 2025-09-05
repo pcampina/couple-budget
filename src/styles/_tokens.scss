@@ -1,0 +1,23 @@
+// Color tokens (delegated to CSS variables)
+$clr-bg: var(--clr-bg, #f7f9fc);
+$clr-ink: var(--clr-ink, #0b0e14);
+$clr-muted: var(--clr-muted, #5f6673);
+$clr-primary: var(--clr-primary, #3d7bff);
+$clr-danger: var(--clr-danger, #e34b4b);
+
+// Glass surfaces
+$glass-bg: var(--glass-bg, rgba(255, 255, 255, 0.60));
+$glass-border: var(--glass-border, rgba(0, 0, 0, 0.08));
+$glass-highlight: var(--glass-highlight, rgba(255, 255, 255, 0.85));
+$glass-shadow: var(--glass-shadow, rgba(0, 0, 0, 0.12));
+
+// Layout
+$radius-lg: 20px;
+$radius-md: 14px;
+$radius-sm: 10px;
+$shadow-sm: 0 4px 16px rgba(0,0,0,.25), 0 1px 1px rgba(255,255,255,.05) inset;
+$shadow-md: 0 12px 36px rgba(0,0,0,.38);
+$focus-ring: 0 0 0 3px rgba($clr-primary, .28);
+
+// Typography
+$font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, Segoe UI, Roboto, Arial, sans-serif;

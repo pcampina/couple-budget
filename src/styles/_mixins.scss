@@ -1,0 +1,45 @@
+@use 'sass:math';
+@use './tokens' as *;
+
+// Subtle 1px hairline border compatible with HiDPI
+@mixin hairline($color: $glass-border) {
+  position: relative;
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 0 1px $color inset;
+    pointer-events: none;
+  }
+}
+
+// Liquid glass effect (backdrop blur + translucent fill + inner highlight)
+@mixin glass($blur: 22px, $bg: $glass-bg) {
+  background: linear-gradient(180deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 100%), $bg;
+  backdrop-filter: blur($blur) saturate(140%);
+  -webkit-backdrop-filter: blur($blur) saturate(140%);
+  box-shadow: $shadow-sm;
+  @include hairline();
+}
+
+// Focus ring helper
+@mixin focus-ring {
+  outline: none;
+  box-shadow: $focus-ring;
+}
+
+// Button base
+@mixin button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 14px;
+  border-radius: $radius-md;
+  border: 0;
+  cursor: pointer;
+  font-weight: 700;
+  transition: transform .06s ease, box-shadow .15s ease, background .15s ease, color .15s ease, opacity .15s ease;
+}
+

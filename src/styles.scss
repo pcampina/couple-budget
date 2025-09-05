@@ -1,1 +1,285 @@
-/* You can add global styles to this file, and also import other style files */
+@use './styles/tokens' as *;
+@use './styles/mixins' as *;
+
+/* Theme variables */
+:root {
+  /* Light (default) */
+  --clr-bg: #eef2f8;
+  --clr-ink: #0b0e14;
+  --clr-muted: #6b7280;
+  --clr-primary: #0a84ff;
+  --clr-danger: #e34b4b;
+
+  --glass-bg: rgba(255,255,255,.42);
+  --glass-border: rgba(0,0,0,.12);
+  --glass-highlight: rgba(255,255,255,.95);
+  --glass-shadow: rgba(0,0,0,.10);
+
+  /* Accent variants */
+  --clr-accent: #5e5ce6; /* iOS Indigo */
+  --clr-success: #34c759; /* iOS Green */
+  --clr-cyan: #32ade6; /* iOS Cyan */
+
+  /* Subtle ambient gradients for light */
+  --bg-gradients:
+    radial-gradient(900px 520px at -10% -10%, rgba(10,132,255,.18), transparent 55%),
+    radial-gradient(700px 480px at 110% 10%, rgba(255,159,243,.16), transparent 55%),
+    radial-gradient(900px 520px at 0% 100%, rgba(52,199,89,.12), transparent 60%),
+    radial-gradient(1200px 800px at 50% -20%, rgba(255,255,255,.6), transparent 60%);
+  --placeholder: color-mix(in srgb, var(--clr-ink) 40%, transparent);
+}
+
+[data-theme="dark"] {
+  --clr-bg: #0b0e14;
+  --clr-ink: #e7ecf3;
+  --clr-muted: #9aa4b2;
+  --clr-primary: #0a84ff;
+  --clr-danger: #ff7676;
+
+  --glass-bg: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-highlight: rgba(255, 255, 255, 0.25);
+  --glass-shadow: rgba(0, 0, 0, 0.40);
+
+  --clr-accent: #5e5ce6;
+  --clr-success: #30d158; /* iOS Green (dark) */
+  --clr-cyan: #64d2ff; /* iOS Cyan (dark) */
+
+  /* Ambient gradients for dark */
+  --bg-gradients:
+    radial-gradient(1200px 600px at 10% -10%, rgba(79,140,255,.28), transparent 60%),
+    radial-gradient(1000px 600px at 100% 30%, rgba(45,212,191,.22), transparent 60%);
+  --placeholder: color-mix(in srgb, var(--clr-ink) 55%, transparent);
+}
+
+/* Base reset */
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0;
+  color: $clr-ink;
+  font: 14px/1.45 $font-family;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background: var(--bg-gradients), linear-gradient(180deg, $clr-bg 0%, $clr-bg 100%);
+}
+
+/* Utility */
+.u-bold { font-weight: 700; }
+.text { &--muted { color: $clr-muted; } }
+
+/* Page layout */
+.budget {
+  max-width: 1100px;
+  margin: 28px auto;
+  padding: 0 16px 28px;
+}
+
+.budget__header { position: relative; padding-right: 40px; }
+.budget__header h1 { margin: 0; font-size: 26px; font-weight: 700; letter-spacing: .1px; }
+.budget__header .text--muted { margin-top: 6px; }
+
+.budget__section + .budget__section { margin-top: 20px; }
+
+/* Card (glass) */
+.card {
+  border-radius: $radius-lg;
+  padding: 18px;
+  &--glass { @include glass(28px); }
+}
+
+/* Form grid */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+label span { display: block; font-size: 12px; color: $clr-muted; margin-bottom: 6px; font-weight: 600; }
+
+/* Inputs */
+.input {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: $radius-md;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  color: $clr-ink;
+  transition: border-color .15s ease, box-shadow .15s ease, background .15s ease;
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  position: relative;
+  @include hairline(var(--glass-border));
+  &::placeholder { color: var(--placeholder); }
+  &:hover { background: color-mix(in srgb, var(--glass-bg) 100%, white 10%); }
+  &:focus { @include focus-ring; background: color-mix(in srgb, var(--glass-bg) 100%, white 15%); }
+  &.input--num { text-align: right; }
+  &.input--cell { padding: 6px 8px; border-radius: $radius-sm; }
+}
+
+/* Add form row */
+.form-add { display: flex; gap: 10px; margin: 10px 0 12px; }
+
+/* Buttons */
+.button {
+  @include button-base;
+  border-radius: $radius-md;
+  border: 1px solid color-mix(in srgb, var(--clr-primary) 45%, var(--glass-border));
+  color: #fff;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-primary) 45%, transparent) 0%,
+      color-mix(in srgb, var(--clr-primary) 35%, transparent) 100%),
+    var(--glass-bg);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 8px 24px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+}
+.button:hover {
+  box-shadow: 0 10px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-primary) 55%, transparent) 0%,
+      color-mix(in srgb, var(--clr-primary) 45%, transparent) 100%),
+    var(--glass-bg);
+}
+.button:active { transform: translateY(1px); filter: saturate(110%); }
+.button:focus-visible { @include focus-ring; }
+.button:disabled { opacity: .6; cursor: not-allowed; box-shadow: none; }
+
+.button--ghost { @include glass(14px); color: $clr-ink; }
+.button--ghost:hover { filter: brightness(1.06); box-shadow: $shadow-md; }
+.button--ghost:disabled { opacity: .5; }
+
+/* Variant: Accent (for Add person) */
+/* Variant: Cyan (for Add person) */
+.button--cyan {
+  border-color: color-mix(in srgb, var(--clr-cyan) 50%, var(--glass-border));
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-cyan) 48%, transparent) 0%,
+      color-mix(in srgb, var(--clr-cyan) 38%, transparent) 100%),
+    var(--glass-bg);
+}
+.button--cyan:hover {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-cyan) 58%, transparent) 0%,
+      color-mix(in srgb, var(--clr-cyan) 48%, transparent) 100%),
+    var(--glass-bg);
+}
+
+/* Variant: Success (for Add expense) */
+.button--success {
+  border-color: color-mix(in srgb, var(--clr-success) 50%, var(--glass-border));
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-success) 48%, transparent) 0%,
+      color-mix(in srgb, var(--clr-success) 38%, transparent) 100%),
+    var(--glass-bg);
+}
+.button--success:hover {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-success) 58%, transparent) 0%,
+      color-mix(in srgb, var(--clr-success) 48%, transparent) 100%),
+    var(--glass-bg);
+}
+
+/* Variant: Danger Ghost (for Remove) */
+.button--danger-ghost {
+  @include glass(14px);
+  color: color-mix(in srgb, var(--clr-danger) 90%, black 15%);
+  border-color: color-mix(in srgb, var(--clr-danger) 55%, var(--glass-border));
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-danger) 12%, transparent) 0%,
+      color-mix(in srgb, var(--clr-danger) 8%, transparent) 100%),
+    var(--glass-bg);
+}
+.button--danger-ghost:hover {
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-danger) 18%, transparent) 0%,
+      color-mix(in srgb, var(--clr-danger) 12%, transparent) 100%),
+    var(--glass-bg);
+}
+.button--danger-ghost:focus-visible { box-shadow: 0 0 0 3px color-mix(in srgb, var(--clr-danger) 35%, transparent); }
+.button--danger-ghost:disabled { opacity: .6; cursor: not-allowed; box-shadow: none; }
+
+[data-theme="dark"] .button--danger-ghost {
+  color: color-mix(in srgb, var(--clr-danger) 88%, white 18%);
+  border-color: color-mix(in srgb, var(--clr-danger) 65%, var(--glass-border));
+}
+
+/* Size: small (for table actions) */
+.button--sm { padding: 6px 10px; font-size: 12px; }
+
+/* Chips */
+.chip-group { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+.chip {
+  border-radius: 999px; padding: 6px 10px; color: $clr-ink;
+  @include glass(18px);
+}
+
+/* Data table */
+.data-table {
+  @include glass(18px);
+  border-radius: $radius-md;
+  overflow: hidden;
+}
+.data-table__head { position: sticky; top: 0; z-index: 2; background: linear-gradient(0deg, rgba(255,255,255,.06), rgba(255,255,255,.12)); }
+.data-table__foot { background: linear-gradient(180deg, rgba(255,255,255,.04), rgba(255,255,255,.06)); }
+
+.data-table__row {
+  display: grid;
+  grid-template-columns: 2fr 1.2fr 1.2fr 1.2fr 88px;
+  border-bottom: 1px solid var(--glass-border);
+}
+
+.data-table__body .data-table__row:nth-child(even) .data-table__cell { background: color-mix(in srgb, var(--glass-bg) 100%, white 6%); }
+.data-table__body .data-table__row:hover .data-table__cell { background: color-mix(in srgb, var(--glass-bg) 100%, white 10%); }
+.data-table__row--empty .data-table__cell { color: $clr-muted; text-align: center; }
+
+.data-table__cell { padding: 12px; }
+.data-table__cell--head { font-weight: 700; color: $clr-muted; text-transform: uppercase; font-size: 12px; letter-spacing: .6px; }
+.data-table__cell--num { text-align: right; }
+.data-table__cell--actions { text-align: right; }
+
+/* Action links */
+.link { background: none; border: 0; color: $clr-danger; cursor: pointer; font-weight: 600; padding: 4px 8px; border-radius: $radius-sm; transition: background .15s ease, color .15s ease; }
+.link:hover { background: color-mix(in srgb, var(--clr-danger) 12%, transparent); color: color-mix(in srgb, var(--clr-danger) 80%, white 20%); }
+.link:focus-visible { @include focus-ring; }
+
+/* Responsive */
+@media (max-width: 820px) {
+  .data-table__row { grid-template-columns: 1.3fr .9fr .9fr .9fr 68px; }
+  .form-grid { grid-template-columns: 1fr; }
+}
+
+/* Icon button for theme toggle */
+.icon-button {
+  @include button-base;
+  width: 34px; height: 34px; padding: 6px; border-radius: 999px;
+  color: $clr-ink;
+  background: color-mix(in srgb, var(--glass-bg) 80%, transparent);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  gap: 0; line-height: 0;
+}
+.icon-button:hover { box-shadow: 0 2px 10px var(--glass-shadow) }
+.theme-toggle { position: absolute; top: 0; right: 0; }
+.theme-toggle svg { width: 22px; height: 22px; display: block; }
+.icon-button:focus-visible { @include focus-ring; }
+
+/* Smooth theming transitions on core surfaces */
+.card,
+.input,
+.button,
+.button--ghost,
+.data-table,
+.data-table__row,
+.chip {
+  transition: background-color .16s ease, background .16s ease, color .16s ease, border-color .16s ease, box-shadow .16s ease;
+}
