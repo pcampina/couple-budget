@@ -146,9 +146,9 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Notes
 
 - Tests run with Vitest; Karma is not used.
-- ID generation: always use `uuid()` helpers
-  - Frontend: `src/app/shared/uuid.ts`
-  - API: `api/utils.ts`
+- ID generation: use native random UUIDs
+  - Frontend (browser): `crypto.randomUUID()` directly
+  - API (Node): `uuid()` exported from `api/utils.ts` (uses `node:crypto` randomUUID)
   - Check locally: `npm run lint:ids` (fails on non-UUID patterns)
 
 ## Additional Resources

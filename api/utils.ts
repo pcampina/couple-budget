@@ -1,16 +1,7 @@
 import type { ServerResponse, IncomingHttpHeaders } from 'node:http';
+import { randomUUID } from 'node:crypto';
 
-export function uuid(): string {
-  try {
-    // Prefer native UUID when available
-    if (typeof crypto !== 'undefined' && (crypto as any).randomUUID) {
-      return (crypto as any).randomUUID();
-    }
-  } catch {}
-  // Fallback RFC4122 v4-like
-  const s4 = () => Math.floor((1 + Math.random()) * 0x10000).toString(16).slice(1);
-  return `${s4()}${s4()}-${s4()}-${s4()}-${s4()}-${s4()}${s4()}${s4()}`;
-}
+export function uuid(): string { return randomUUID(); }
 
 export function send<T>(res: ServerResponse, status: number, data?: T, headers: IncomingHttpHeaders = {} as any): void {
   const body = data === undefined ? '' : JSON.stringify(data);

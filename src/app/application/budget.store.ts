@@ -2,14 +2,13 @@ import { Injectable, computed, signal } from '@angular/core';
 import { Expense, Participant, ParticipantId, AllocationByParticipant } from '../domain/models';
 import { splitByIncome } from '../domain/services/split.service';
 import { ApiService } from '../infrastructure/api.service';
-import { uuid } from '../shared/uuid';
 
 
 @Injectable({ providedIn: 'root' })
 export class BudgetStore {
   private readonly _participants = signal<Participant[]>([
-    { id: uuid(), name: 'John Doe', income: 2000 },
-    { id: uuid(), name: 'Jane Doe', income: 1600 },
+    { id: (crypto as any).randomUUID(), name: 'John Doe', income: 2000 },
+    { id: (crypto as any).randomUUID(), name: 'Jane Doe', income: 1600 },
   ]);
   readonly participants = computed(() => this._participants());
   readonly participantCount = computed(() => this._participants().length);
@@ -21,7 +20,7 @@ export class BudgetStore {
   });
 
   private readonly _expenses = signal<Expense[]>([
-    { id: uuid(), name: 'Aluguel', total: 1200 }
+    { id: (crypto as any).randomUUID(), name: 'Aluguel', total: 1200 }
   ]);
   readonly expenses = computed(() => this._expenses());
 
@@ -82,7 +81,7 @@ export class BudgetStore {
         .catch(() => {});
       return;
     }
-    const p: Participant = { id: uuid(), name: name.trim(), income: Math.max(0, income || 0) };
+    const p: Participant = { id: (crypto as any).randomUUID(), name: name.trim(), income: Math.max(0, income || 0) };
     this._participants.update(list => [...list, p]);
   }
 
@@ -103,7 +102,7 @@ export class BudgetStore {
         .catch(() => {});
       return;
     }
-    const e: Expense = { id: uuid(), name: name.trim(), total: Math.max(0, total || 0) };
+    const e: Expense = { id: (crypto as any).randomUUID(), name: name.trim(), total: Math.max(0, total || 0) };
     this._expenses.update(list => [...list, e]);
   }
 
