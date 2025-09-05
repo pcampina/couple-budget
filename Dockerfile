@@ -1,0 +1,29 @@
+# Multi-stage build for API (TypeScript -> JS)
+FROM node:20-alpine AS builder
+WORKDIR /app
+
+# Install dependencies
+COPY package*.json ./
+RUN npm ci
+
+# Copy API sources and build
+COPY api ./api
+RUN npx tsc -p api/tsconfig.json
+
+FROM node:20-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production
+
+# Copy node_modules (includes dev deps to run knex CLI) and built API
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/dist-api ./dist-api
+
+# Copy migrations and knex config
+COPY api/knexfile.mjs ./api/knexfile.mjs
+COPY api/migrations ./api/migrations
+
+EXPOSE 3333
+
+# Run migrations then start API
+CMD sh -c "npx knex --knexfile api/knexfile.mjs migrate:latest && node dist-api/server.js"
+

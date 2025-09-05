@@ -1,0 +1,9 @@
+node_modules
+dist
+dist-api
+.angular
+coverage
+.git
+.env
+Dockerfile*
+docker-compose*

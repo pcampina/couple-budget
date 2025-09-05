@@ -1,0 +1,31 @@
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-couple_budget}
+      POSTGRES_USER: ${DB_USER:-couple}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-couple}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U couple -d couple_budget"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-3333}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-dev-secret-change-me}
+      SUPABASE_DB_URL: ${SUPABASE_DB_URL:-postgresql://couple:couple@db:5432/couple_budget}
+    ports:
+      - "${PORT:-3333}:3333"
+
+volumes:
+  dbdata:
