@@ -1,33 +1,51 @@
-<main class="page">
-  <header class="header">
+<main class="budget">
+  <header class="budget__header">
     <h1>Couple's Expenses</h1>
-    <p class="muted">Two salaries ⇒ percentages ⇒ each expense already split automatically (€).</p>
+    <p class="text text--muted">Two salaries ⇒ percentages ⇒ each expense already split automatically (€).</p>
+    <div class="auth-box">
+      @if (auth.isAuthenticated()) {
+        <span class="chip">Role: {{ auth.role() }}</span>
+        <button class="button button--sm" type="button" (click)="logout()">Logout</button>
+      }
+    </div>
+    <button class="icon-button theme-toggle" type="button" (click)="toggleTheme()" [attr.aria-label]="theme() === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'" title="Toggle theme">
+      @if (theme() === 'light') {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden>
+          <circle cx="12" cy="12" r="4"/>
+          <path d="M12 2v2m0 16v2M4.93 4.93l1.41 1.41m11.32 11.32l1.41 1.41M2 12h2m16 0h2M4.93 19.07l1.41-1.41m11.32-11.32l1.41-1.41"/>
+        </svg>
+      } @else {
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12.79A9 9 0 1 1 11.21 3a7 7 0 0 0 9.79 9.79z" />
+        </svg>
+      }
+    </button>
   </header>
 
-  <section class="card">
+  <section class="budget__section card card--glass">
     <h2>Configuration</h2>
-    <div class="grid">
+    <div class="form-grid">
       @for (p of store.participants(); track p.id) {
         <div>
           <label>
             <span>Person name</span>
-            <input [value]="p.name" (change)="store.setParticipantName(p.id, $any($event.target).value)"/>
+            <input class="input" [disabled]="usingApi && !isAdmin()" [value]="p.name" (change)="store.setParticipantName(p.id, $any($event.target).value)"/>
           </label>
           <label>
             <span>Income (€)</span>
-            <input type="number" step="0.01" [ngModel]="p.income" (ngModelChange)="store.setParticipantIncome(p.id, $event)" />
+            <input class="input input--num" type="number" step="0.01" [disabled]="usingApi && !isAdmin()" [ngModel]="p.income" (ngModelChange)="store.setParticipantIncome(p.id, $event)" />
           </label>
           <div style="margin-top:8px">
-            <button class="btn btn--ghost" (click)="store.removeParticipant(p.id)" [disabled]="store.participantCount() <= 2">Remove</button>
+            <button class="button button--danger-ghost" (click)="store.removeParticipant(p.id)" [disabled]="store.participantCount() <= 2 || (usingApi && !isAdmin())">Remove</button>
           </div>
         </div>
       }
     </div>
     <div style="margin-top:12px">
-      <button class="btn" (click)="store.addParticipant()">Add person</button>
+      <button class="button button--cyan" (click)="store.addParticipant()" [disabled]="usingApi && !isAdmin()">Add person</button>
     </div>
 
-    <div class="chips">
+    <div class="chip-group">
       <span class="chip">Total: {{ store.totalIncome() | currency:'EUR':'symbol':'1.2-2' }}</span>
       @for (s of store.participantShares(); track s.id) {
         <span class="chip">{{ s.name }}: {{ (s.share * 100) | number:'1.0-2' }}%</span>
@@ -35,57 +53,57 @@
     </div>
   </section>
 
-  <section class="card">
+  <section class="budget__section card card--glass">
     <h2>Expenses</h2>
 
-    <form class="add-row" (submit)="$event.preventDefault(); addFromForm()">
-      <input placeholder="Expense" [(ngModel)]="newName" name="name" required />
-      <input placeholder="Total amount (€)" type="number" step="0.01" [(ngModel)]="newTotal" name="total" required />
-      <button class="btn" [disabled]="!newName || !isValid(newTotal)">Add</button>
+    <form class="form-add" (submit)="$event.preventDefault(); addFromForm()">
+      <input class="input" placeholder="Expense" [(ngModel)]="newName" name="name" required />
+      <input class="input input--num" placeholder="Total amount (€)" type="number" step="0.01" [(ngModel)]="newTotal" name="total" required />
+      <button class="button button--success" [disabled]="!newName || !isValid(newTotal) || (usingApi && !isAdmin())">Add</button>
     </form>
 
-    <div class="table" role="table" aria-label="Expense list">
-      <div class="thead" role="rowgroup">
-        <div class="tr" role="row" [style.grid-template-columns]="gridTemplateColumns()">
-          <div class="th" role="columnheader">Expense</div>
-          <div class="th num" role="columnheader">Total amount (€)</div>
+    <div class="data-table" role="table" aria-label="Expense list">
+      <div class="data-table__head" role="rowgroup">
+        <div class="data-table__row" role="row" [style.grid-template-columns]="gridTemplateColumns()">
+          <div class="data-table__cell data-table__cell--head" role="columnheader">Expense</div>
+          <div class="data-table__cell data-table__cell--head data-table__cell--num" role="columnheader">Total amount (€)</div>
           @for (p of store.participants(); track p.id) {
-            <div class="th num" role="columnheader">{{ p.name }}</div>
+            <div class="data-table__cell data-table__cell--head data-table__cell--num" role="columnheader">{{ p.name }}</div>
           }
-          <div class="th" role="columnheader"></div>
+          <div class="data-table__cell data-table__cell--head" role="columnheader"></div>
         </div>
       </div>
 
-      <div class="tbody" role="rowgroup">
+      <div class="data-table__body" role="rowgroup">
         @for (e of store.expensesWithAllocations(); track e.id) {
-          <div class="tr" role="row" [style.grid-template-columns]="gridTemplateColumns()">
-            <div class="td">
-              <input class="cell-input" [value]="e.name" (change)="store.updateExpense(e.id, { name: $any($event.target).value })"/>
+          <div class="data-table__row" role="row" [style.grid-template-columns]="gridTemplateColumns()">
+            <div class="data-table__cell">
+              <input class="input input--cell" [disabled]="usingApi && !isAdmin()" [value]="e.name" (change)="store.updateExpense(e.id, { name: $any($event.target).value })"/>
             </div>
-            <div class="td num">
-              <input class="cell-input num" type="number" step="0.01"
+            <div class="data-table__cell data-table__cell--num">
+              <input class="input input--cell input--num" type="number" step="0.01" [disabled]="usingApi && !isAdmin()"
                       [value]="e.total"
                       (change)="store.updateExpense(e.id, { total: toNumber($any($event.target).value) })"/>
             </div>
             @for (p of store.participants(); track p.id) {
-              <div class="td num">{{ e.allocations[p.id] | currency:'EUR':'symbol':'1.2-2' }}</div>
+              <div class="data-table__cell data-table__cell--num">{{ e.allocations[p.id] | currency:'EUR':'symbol':'1.2-2' }}</div>
             }
-            <div class="td actions"><button class="link" (click)="store.removeExpense(e.id)">remove</button></div>
+            <div class="data-table__cell data-table__cell--actions"><button class="button button--danger-ghost button--sm" [disabled]="usingApi && !isAdmin()" (click)="store.removeExpense(e.id)" [attr.aria-label]="'Remove expense ' + e.name">Remove</button></div>
           </div>
         }
         @if (store.expensesWithAllocations().length === 0) {
-          <div class="tr empty"><div class="td" colspan="5">No expenses yet.</div></div>
+          <div class="data-table__row data-table__row--empty"><div class="data-table__cell" colspan="5">No expenses yet.</div></div>
         }
       </div>
 
-      <div class="tfoot" role="rowgroup">
-        <div class="tr" [style.grid-template-columns]="gridTemplateColumns()">
-          <div class="td bold">Totals</div>
-          <div class="td num bold">{{ store.totalExpenses() | currency:'EUR':'symbol':'1.2-2' }}</div>
+      <div class="data-table__foot" role="rowgroup">
+        <div class="data-table__row" [style.grid-template-columns]="gridTemplateColumns()">
+          <div class="data-table__cell u-bold">Totals</div>
+          <div class="data-table__cell data-table__cell--num u-bold">{{ store.totalExpenses() | currency:'EUR':'symbol':'1.2-2' }}</div>
           @for (p of store.participants(); track p.id) {
-            <div class="td num bold">{{ store.totalsPerParticipant()[p.id] | currency:'EUR':'symbol':'1.2-2' }}</div>
+            <div class="data-table__cell data-table__cell--num u-bold">{{ store.totalsPerParticipant()[p.id] | currency:'EUR':'symbol':'1.2-2' }}</div>
           }
-          <div class="td"></div>
+          <div class="data-table__cell"></div>
         </div>
       </div>
     </div>
