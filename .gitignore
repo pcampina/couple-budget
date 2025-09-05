@@ -37,6 +37,13 @@ yarn-error.log
 testem.log
 /typings
 
+# API build output and generated public config
+/dist-api
+/public/config.js
+
 # System files
 .DS_Store
 Thumbs.db
+
+# Environment
+.env
