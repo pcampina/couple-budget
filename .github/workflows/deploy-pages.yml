@@ -49,6 +49,12 @@ jobs:
       - name: Run unit tests (Vitest)
         run: npm run test:ci
 
+      - name: Generate runtime config (no API)
+        env:
+          USE_API: "false"
+          DEBUG: "false"
+        run: npm run gen:config
+
       - name: Build Angular app
         run: |
           npx ng build --configuration=production --base-href "/${{ github.event.repository.name }}/"
