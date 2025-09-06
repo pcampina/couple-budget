@@ -1,0 +1,71 @@
+<section class="budget__section card card--glass">
+  <h2>Transactions</h2>
+
+  <form class="form-add" (submit)="$event.preventDefault(); addFromForm()">
+    <input class="input" placeholder="Transaction" [(ngModel)]="newName" name="name" required />
+    <select class="input" [(ngModel)]="newType" name="type">
+      @for (t of types(); track t.code) {
+      <option [ngValue]="t.code">{{ t.name }}</option>
+      }
+    </select>
+    <input class="input input--num" placeholder="Amount (€)" type="number" step="0.01" [(ngModel)]="newTotal"
+      name="total" required />
+    <button class="button button--success"
+      [disabled]="!newName || !isValid(newTotal) || store.participantCount() === 0 || (usingApi && !canMutateExpenses())">Add</button>
+  </form>
+
+  <div class="data-table" role="table" aria-label="Transactions list">
+    <div class="data-table__head" role="rowgroup">
+      <div class="data-table__row" role="row" [style.grid-template-columns]="gridTemplateColumns()">
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Transaction</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Type</div>
+        <div class="data-table__cell data-table__cell--head data-table__cell--num" role="columnheader">Amount (€)</div>
+        @for (p of store.participants(); track p.id) {
+        <div class="data-table__cell data-table__cell--head data-table__cell--num" role="columnheader">{{ p.name }}
+        </div>
+        }
+        <div class="data-table__cell data-table__cell--head" role="columnheader"></div>
+      </div>
+    </div>
+
+    <div class="data-table__body" role="rowgroup">
+      @for (e of store.expensesWithAllocations(); track e.id) {
+      <div class="data-table__row" role="row" [style.grid-template-columns]="gridTemplateColumns()">
+        <div class="data-table__cell">
+          <input class="input input--cell" [disabled]="usingApi && !canMutateExpenses()"
+            [value]="expenseNameValue(e.id, e.name)" (input)="onExpenseNameInput(e.id, $any($event.target).value)"
+            (keyup.enter)="saveExpense(e.id, e.name, e.total)" />
+        </div>
+        <div class="data-table__cell">
+          <span class="chip">{{ txTypeLabel(e) }}</span>
+        </div>
+        <div class="data-table__cell data-table__cell--num">
+          <input class="input input--cell input--num" type="number" step="0.01"
+            [disabled]="usingApi && !canMutateExpenses()" [value]="expenseTotalValue(e.id, e.total)"
+            (input)="onExpenseTotalInput(e.id, $any($event.target).value)"
+            (keyup.enter)="saveExpense(e.id, e.name, e.total)" />
+        </div>
+        @for (p of store.participants(); track p.id) {
+        <div class="data-table__cell data-table__cell--num">{{ e.allocations[p.id] | currency:'EUR':'symbol':'1.2-2' }}
+        </div>
+        }
+        <div class="data-table__cell data-table__cell--actions">
+          @if (isExpenseDirty(e.id, e.name, e.total)) {
+          <button class="button button--sm" (click)="saveExpense(e.id, e.name, e.total)">Save</button>
+          }
+          <button class="button button--danger-ghost button--sm" [disabled]="usingApi && !canMutateExpenses()"
+            (click)="removeExpenseAction(e.id)" [attr.aria-label]="'Remove expense ' + e.name">Remove</button>
+        </div>
+      </div>
+      }
+      @if (store.expensesWithAllocations().length === 0) {
+      <div class="data-table__row data-table__row--empty">
+        <div class="data-table__cell" colspan="5">No transactions yet.</div>
+      </div>
+      }
+    </div>
+  </div>
+
+  <!-- Pagination hidden while allocations are server-computed per expense date -->
+</section>
+

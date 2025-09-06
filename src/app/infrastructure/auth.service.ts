@@ -1,66 +1,82 @@
 import { Injectable, computed, signal } from '@angular/core';
-import { createClient, type SupabaseClient, type Session, type User } from '@supabase/supabase-js';
+import { ApiService } from './api.service';
+
+type JwtPayload = {
+  sub?: string;
+  email?: string;
+  role?: string;
+  app_metadata?: { roles?: string[] };
+  exp?: number;
+  iat?: number;
+  [k: string]: any;
+};
 
 @Injectable({ providedIn: 'root' })
 export class AuthService {
-  private client: SupabaseClient | null = null;
-  private _session = signal<Session | null>(null);
-  readonly session = computed(() => this._session());
-  readonly user = computed<User | null>(() => this._session()?.user ?? null);
-  readonly isAuthenticated = computed(() => !!this._session());
-  readonly role = computed<'admin' | 'user' | 'anonymous'>(() => {
-    const u = this._session()?.user; if (!u) return 'anonymous';
-    const roles = (u.app_metadata as any)?.roles as string[] | undefined;
-    if (roles?.includes('admin')) return 'admin';
-    if (roles?.includes('user')) return 'user';
-    return 'user';
-  });
+  private storageKey = 'auth/token';
+  private _token = signal<string | null>(null);
 
-  constructor() {
+  constructor(private api: ApiService) {
     try {
-      const url = (window as any).__SUPABASE_URL__ as string | undefined;
-      const anon = (window as any).__SUPABASE_ANON_KEY__ as string | undefined;
-      if (url && anon) {
-        this.client = createClient(url, anon);
-        this.client.auth.getSession().then(({ data }) => this._session.set(data.session));
-        this.client.auth.onAuthStateChange((_event, session) => this._session.set(session));
-      }
+      const t = typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
+      this._token.set(t);
     } catch {}
   }
 
-  async signInWithPassword(email: string, password: string) {
-    if (!this.client) throw new Error('Supabase client not configured');
-    const { data, error } = await this.client.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    this._session.set(data.session);
-    return data.session;
+  private decode(token: string | null): JwtPayload | null {
+    try {
+      if (!token) return null;
+      const parts = token.split('.');
+      if (parts.length !== 3) return null;
+      const p = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const pad = p.length % 4 ? '='.repeat(4 - (p.length % 4)) : '';
+      let jsonStr: string | null = null;
+      if (typeof atob === 'function') {
+        const bin = atob(p + pad);
+        try {
+          const bytes = Uint8Array.from(bin, c => c.charCodeAt(0));
+          jsonStr = typeof TextDecoder !== 'undefined' ? new TextDecoder('utf-8').decode(bytes) : bin;
+        } catch {
+          jsonStr = bin;
+        }
+      } else {
+        jsonStr = (globalThis as any).Buffer?.from?.(p + pad, 'base64')?.toString?.('utf-8') ?? null;
+      }
+      if (!jsonStr) return null;
+      return JSON.parse(jsonStr);
+    } catch { return null; }
+  }
+
+  readonly user = computed(() => this.decode(this._token()));
+  readonly isAuthenticated = computed(() => {
+    const u = this.user();
+    if (!u) return false;
+    const now = Math.floor(Date.now() / 1000);
+    return !u.exp || u.exp > now;
+  });
+  readonly role = computed<'admin' | 'user' | 'anonymous'>(() => {
+    const u = this.user(); if (!u) return 'anonymous';
+    const roles = u.app_metadata?.roles || [];
+    if (roles.includes('admin')) return 'admin';
+    if (roles.includes('user')) return 'user';
+    return 'user';
+  });
+
+  async signIn(email: string, password: string) {
+    const { access_token } = await this.api.login(email, password);
+    this._token.set(access_token);
+    try { if (typeof localStorage !== 'undefined') localStorage.setItem(this.storageKey, access_token); } catch {}
+    return access_token;
   }
 
   async signOut() {
-    if (!this.client) return;
-    await this.client.auth.signOut();
-    this._session.set(null);
+    this._token.set(null);
+    try { if (typeof localStorage !== 'undefined') localStorage.removeItem(this.storageKey); } catch {}
   }
 
-  async getAccessToken(): Promise<string | null> {
-    if (!this.client) return null;
-    const { data } = await this.client.auth.getSession();
-    return data.session?.access_token ?? null;
-  }
+  async getAccessToken(): Promise<string | null> { return this._token(); }
+  isConfigured(): boolean { return true; }
+  async refreshAccessToken(): Promise<string | null> { return this._token(); }
 
-  isConfigured(): boolean {
-    return !!this.client;
-  }
-
-  async refreshAccessToken(): Promise<string | null> {
-    if (!this.client) return null;
-    try {
-      const { data, error } = await this.client.auth.refreshSession();
-      if (error) return null;
-      if (data.session) this._session.set(data.session);
-      return data.session?.access_token ?? null;
-    } catch {
-      return null;
-    }
-  }
+  
 }

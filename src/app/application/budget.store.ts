@@ -17,17 +17,22 @@ export class BudgetStore {
   });
 
   private readonly _expenses = signal<Expense[]>([]);
+  // When using API, prefer server-computed allocations and totals
+  private readonly _apiExpensesWithAllocations = signal<(Expense & { allocations: AllocationByParticipant })[]>([]);
+  private readonly _apiTotalsPerParticipant = signal<Record<string, number>>({});
   readonly expenses = computed(() => this._expenses());
 
-  readonly expensesWithAllocations = computed(() =>
-    this._expenses().map(e => {
+  readonly expensesWithAllocations = computed(() => {
+    if (this.useApi) return this._apiExpensesWithAllocations();
+    return this._expenses().map(e => {
       const allocations = splitByIncome(e.total, this._participants());
       return { ...e, allocations } as Expense & { allocations: AllocationByParticipant };
-    })
-  );
+    });
+  });
 
   readonly totalExpenses = computed(() => this._expenses().reduce((acc, e) => acc + (e.total || 0), 0));
   readonly totalsPerParticipant = computed(() => {
+    if (this.useApi) return this._apiTotalsPerParticipant();
     const totals: AllocationByParticipant = Object.fromEntries(this._participants().map(p => [p.id, 0]));
     for (const e of this.expensesWithAllocations()) {
       for (const pid of Object.keys(e.allocations)) {
@@ -37,15 +42,19 @@ export class BudgetStore {
     return totals;
   });
 
-  private readonly useApi = typeof window !== 'undefined' && (window as any).__USE_API__ === true;
+  private readonly useApi = typeof window !== 'undefined' && ((window as any).__USE_API__ === true || String((window as any).__USE_API__).toLowerCase() === 'true');
 
-  async refreshFromApi() {
-    // no-op if not using API or service not provided
+  async refreshFromApi(force = false) {
+    // Attempt to hydrate from API when available. In early boot where __USE_API__
+    // might be missing, callers can pass force=true to bypass the useApi gate.
     try {
-      if (!this.api || !this.useApi) return;
+      if (!this.api) return;
+      if (!this.useApi && !force) return;
       const stats = await this.api.getStats();
-      this._participants.set(stats.participants.map(p => ({ id: p.id, name: p.name, income: p.income })));
-      this._expenses.set(stats.expenses.map(e => ({ id: e.id, name: e.name, total: e.total })));
+      this._participants.set(stats.participants.map(p => ({ id: p.id, name: p.name, email: (p as any).email ?? null, income: p.income })));
+      this._expenses.set(stats.expenses.map(e => ({ id: e.id, name: e.name, total: e.total, type: (e as any).type_code || 'expense' })));
+      this._apiExpensesWithAllocations.set((stats.expensesWithAllocations || []).map(e => ({ id: e.id, name: e.name, total: e.total, type: (e as any).type_code || 'expense', allocations: (e as any).allocations || {} })) as any);
+      this._apiTotalsPerParticipant.set(stats.totalsPerParticipant || {} as any);
     } catch {}
   }
 
@@ -67,9 +76,9 @@ export class BudgetStore {
     this._participants.update(list => list.map(p => p.id === id ? { ...p, name: name.trim() } : p));
   }
 
-  async addParticipant(name = `Pessoa ${this._participants().length + 1}`, income = 0): Promise<void> {
+  async addParticipant(name = `Person ${this._participants().length + 1}`, income = 0, email?: string): Promise<void> {
     if (this.api && this.useApi) {
-      await this.api.addParticipant(name.trim(), Math.max(0, income || 0));
+      await this.api.addParticipant(name.trim(), Math.max(0, income || 0), email?.trim());
       await this.refreshFromApi();
       return;
     }
@@ -86,13 +95,17 @@ export class BudgetStore {
     this._participants.update(list => list.length <= 2 ? list : list.filter(p => p.id !== id));
   }
 
-  async addExpense(name: string, total: number): Promise<void> {
+  async addExpense(name: string, total: number, type: string = 'expense'): Promise<void> {
+    // Enforce at least one participant exists
+    if ((this._participants()?.length || 0) === 0) {
+      throw new Error('Add at least one participant before creating expenses');
+    }
     if (this.api && this.useApi) {
-      await this.api.addExpense(name.trim(), Math.max(0, total || 0));
+      await this.api.addExpense(name.trim(), Math.max(0, total || 0), type);
       await this.refreshFromApi();
       return;
     }
-    const e: Expense = { id: (crypto as any).randomUUID(), name: name.trim(), total: Math.max(0, total || 0) };
+    const e: Expense = { id: (crypto as any).randomUUID(), name: name.trim(), total: Math.max(0, total || 0), type };
     this._expenses.update(list => [...list, e]);
   }
 

@@ -12,6 +12,12 @@ export default defineConfig({
     poolOptions: {
       threads: { minThreads: 1, maxThreads: 1 },
     },
+    coverage: {
+      enabled: true,
+      provider: 'v8',
+      reporter: ['text', 'html'],
+      reportsDirectory: './coverage/unit',
+    },
   },
   resolve: {
     alias: {

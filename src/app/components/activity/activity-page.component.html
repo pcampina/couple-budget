@@ -1,0 +1,59 @@
+<section class="budget__section card card--glass">
+  <h2>Activity</h2>
+  @if (!usingApi) {
+  <p class="text text--muted">API disabled — no activities.</p>
+  } @else {
+  <div class="data-table" role="table" aria-label="Activity list">
+    <div class="data-table__head" role="rowgroup">
+      <div class="data-table__row activity-grid" [class.activity-grid--debug]="cfg.debug"
+        [class.activity-grid--base]="!cfg.debug" role="row">
+        <div class="data-table__cell data-table__cell--head" role="columnheader">When</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Action</div>
+        @if (cfg.debug) {
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Entity</div>
+        }
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Details</div>
+      </div>
+    </div>
+    <div class="data-table__body" role="rowgroup">
+      @for (a of items(); track a.id) {
+      <div class="data-table__row activity-grid" [class.activity-grid--debug]="cfg.debug"
+        [class.activity-grid--base]="!cfg.debug" role="row">
+        <div class="data-table__cell">{{ a.created_at | date:'short' }}</div>
+        <div class="data-table__cell">{{ friendlyAction(a) }}</div>
+        @if (cfg.debug) {
+        <div class="data-table__cell">
+          <button class="button button--ghost button--sm" type="button" (click)="toggleRaw(a.id)">
+            {{ rawOpen(a.id) ? 'Hide raw' : 'Show raw' }}
+          </button>
+        </div>
+        }
+        <div class="data-table__cell">
+          @if (rawOpen(a.id)) {
+          <pre class="payload">{{ a.payload | json }}</pre>
+          } @else {
+          @if ($any(a.payload)?.total != null) {
+          <span class="v">{{ $any(a.payload).total | currency:'EUR':'symbol':'1.2-2' }}</span>
+          } @else if ($any(a.payload)?.name) {
+          <span class="v">{{ $any(a.payload).name }}</span>
+          } @else {
+          <span class="text text--muted">—</span>
+          }
+          }
+        </div>
+      </div>
+      }
+      @if (items().length === 0) {
+      <div class="data-table__row data-table__row--empty">
+        <div class="data-table__cell">No activities yet.</div>
+      </div>
+      }
+    </div>
+  </div>
+  <div class="pagination">
+    <button class="button" (click)="loadPage(page() - 1)" [disabled]="page() <= 1">Prev</button>
+    <span>Page {{ page() }}</span>
+    <button class="button" (click)="loadPage(page() + 1)" [disabled]="page() * pageSize >= total()">Next</button>
+  </div>
+  }
+</section>

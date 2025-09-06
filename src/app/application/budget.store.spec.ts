@@ -26,8 +26,12 @@ import { BudgetStore } from '@application/budget.store';
 describe('BudgetStore (signals, multi-participant)', () => {
   let store: BudgetStore;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     store = new BudgetStore();
+    // Initialize with two participants and one expense (since store now starts empty)
+    await store.addParticipant('John', 2000);
+    await store.addParticipant('Jane', 1600);
+    await store.addExpense('Rent', 1200);
   });
 
   it('calculates participant shares correctly', () => {
@@ -39,10 +43,10 @@ describe('BudgetStore (signals, multi-participant)', () => {
     expect(shares[1].share).toBeCloseTo(1600/3600, 5);
   });
 
-  it('recalculates when salary changes', () => {
+  it('recalculates when salary changes', async () => {
     const ids = store.participants().map(p => p.id);
-    store.setParticipantIncome(ids[0], 1000);
-    store.setParticipantIncome(ids[1], 1000);
+    await store.setParticipantIncome(ids[0], 1000);
+    await store.setParticipantIncome(ids[1], 1000);
     const shares = store.participantShares();
     expect(shares[0].share).toBeCloseTo(0.5, 5);
     expect(store.totalIncome()).toBe(2000);
@@ -55,40 +59,40 @@ describe('BudgetStore (signals, multi-participant)', () => {
     expect(sum).toBeCloseTo(1200, 5);
   });
 
-  it('adds/edits/removes expense', () => {
+  it('adds/edits/removes expense', async () => {
     const before = store.expenses().length;
-    store.addExpense('Internet', 40);
+    await store.addExpense('Internet', 40);
     expect(store.expenses().length).toBe(before + 1);
 
     const id = store.expenses()[1].id;
-    store.updateExpense(id, { total: 50 });
+    await store.updateExpense(id, { total: 50 });
     expect(store.expenses()[1].total).toBe(50);
 
-    store.removeExpense(id);
+    await store.removeExpense(id);
     expect(store.expenses().find(e => e.id === id)).toBeUndefined();
   });
 
-  it('updates name and handles update when id not found', () => {
+  it('updates name and handles update when id not found', async () => {
     const firstId = store.participants()[0].id;
-    store.setParticipantName(firstId, '  Alice  ');
+    await store.setParticipantName(firstId, '  Alice  ');
     expect(store.participants()[0].name).toBe('Alice');
 
     const beforeLen = store.expenses().length;
-    store.updateExpense('nope', { total: 999 });
+    await store.updateExpense('nope', { total: 999 });
     expect(store.expenses().length).toBe(beforeLen);
   });
 
-  it('adds/removes participant and keeps at least two', () => {
+  it('adds/removes participant and keeps at least two', async () => {
     const before = store.participants().length;
-    store.addParticipant('Ana', 1000);
+    await store.addParticipant('Ana', 1000);
     expect(store.participants().length).toBe(before + 1);
     const anaId = store.participants()[2].id;
-    store.removeParticipant(anaId);
+    await store.removeParticipant(anaId);
     expect(store.participants().some(p => p.id === anaId)).toBe(false);
     const [id1, id2] = store.participants().map(p => p.id);
-    store.removeParticipant(id1);
-    store.removeParticipant(id2); // should be ignored to keep at least two
-    expect(store.participants().length).toBeGreaterThanOrEqual(1); // at least one removal applied
+    await store.removeParticipant(id1);
+    await store.removeParticipant(id2); // should be ignored to keep at least two
+    expect(store.participants().length).toBe(2);
   });
 
   it('covers computed fields (no localStorage persistence)', () => {

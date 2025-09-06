@@ -1,0 +1,35 @@
+<main class="budget">
+  <header class="budget__header">
+    <h1>Couple's Expenses</h1>
+    <p class="text text--muted">Sign in to continue.</p>
+  </header>
+
+  <section class="budget__section card card--glass login-card">
+    <h2>Login</h2>
+    <form (submit)="$event.preventDefault(); login()">
+      <div class="form-grid">
+        <label>
+          <span>Email</span>
+          <input class="input" placeholder="email" [(ngModel)]="email" name="email" (keyup.enter)="login()" />
+        </label>
+        <label>
+          <span>Password</span>
+          <input class="input" placeholder="password" type="password" [(ngModel)]="password" name="password"
+            (keyup.enter)="login()" />
+        </label>
+      </div>
+      <div class="login-actions">
+        <button class="button button--success" type="submit">Login</button>
+        @if (error) {
+        <p class="text text--danger login-error">{{ error }}</p>
+        }
+      </div>
+    </form>
+  </section>
+</main>
+@if (ui.isLoading()) {
+<div class="overlay">
+  <div class="spinner" aria-label="Loading"></div>
+</div>
+}
+

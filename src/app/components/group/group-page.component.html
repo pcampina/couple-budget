@@ -1,0 +1,30 @@
+<section class="budget__section card card--glass">
+  <h2>Group</h2>
+  <p class="text text--muted">People in your expense-split group.</p>
+  <div class="data-table" role="table" aria-label="Group list">
+    <div class="data-table__head" role="rowgroup">
+      <div class="data-table__row group-grid" role="row">
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Name</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Email</div>
+        <div class="data-table__cell data-table__cell--head data-table__cell--num" role="columnheader">Percent</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Status</div>
+      </div>
+    </div>
+    <div class="data-table__body" role="rowgroup">
+      @for (m of members(); track m.id) {
+        <div class="data-table__row group-grid" role="row">
+          <div class="data-table__cell">{{ m.name }}</div>
+          <div class="data-table__cell">{{ m.email || '—' }}</div>
+          <div class="data-table__cell data-table__cell--num">{{ (shareById()[m.id] || 0) * 100 | number:'1.0-2' }}%</div>
+          <div class="data-table__cell">
+            <span class="chip" [class.u-bold]="m.accepted">{{ m.accepted ? 'accepted' : 'pending' }}</span>
+          </div>
+        </div>
+      }
+      @if (members().length === 0) {
+        <div class="data-table__row data-table__row--empty"><div class="data-table__cell">No members yet.</div></div>
+      }
+    </div>
+  </div>
+</section>
+

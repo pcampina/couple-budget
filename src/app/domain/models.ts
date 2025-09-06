@@ -5,11 +5,13 @@ export interface Expense {
   id: ExpenseId;
   name: string;
   total: number;
+  type?: string;
 }
 
 export interface Participant {
   id: ParticipantId;
   name: string;
+  email?: string | null;
   income: number;
 }
 

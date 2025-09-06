@@ -1,0 +1,5 @@
+.group-grid {
+  display: grid;
+  /* Use CSS variable so global row uses these columns */
+  --dt-cols: 2fr 2fr 1fr 1fr;
+}

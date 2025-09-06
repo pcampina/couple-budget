@@ -4,10 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { BudgetStore } from './application/budget.store';
 import { AuthService } from './infrastructure/auth.service';
 import { UiService } from './infrastructure/ui.service';
+import { NotificationService } from './infrastructure/notification.service';
 
 @Component({
   selector: 'app-main',
-  imports: [FormsModule, CurrencyPipe, DecimalPipe],
+  imports: [FormsModule],
   encapsulation: ViewEncapsulation.None,
   templateUrl: './app.component.html',
   styleUrls: ['./app.component.scss']
@@ -16,8 +17,12 @@ export class AppComponent {
   readonly store = inject(BudgetStore);
   readonly auth = inject(AuthService);
   readonly ui = inject(UiService);
-  readonly usingApi = typeof window !== 'undefined' && (window as any).__USE_API__ === true;
+  readonly notify = inject(NotificationService);
+  readonly usingApi = typeof window !== 'undefined' && (((window as any).__USE_API__ === true) || String((window as any).__USE_API__).toLowerCase() === 'true');
   readonly isAdmin = computed(() => this.auth.role() === 'admin');
+  // Mutations for participants guarded by admin; expenses by authenticated user
+  readonly canMutate = computed(() => !this.auth.isConfigured() || this.isAdmin());
+  readonly canMutateExpenses = computed(() => !this.auth.isConfigured() || this.auth.isAuthenticated());
 
   newName = '';
   newTotal: number | null = null;
@@ -56,10 +61,10 @@ export class AppComponent {
     const patch: any = {};
     if (this.pendingExpenseNames.has(id) && this.pendingExpenseNames.get(id) !== currentName) patch.name = this.pendingExpenseNames.get(id);
     if (this.pendingExpenseTotals.has(id) && this.pendingExpenseTotals.get(id) !== currentTotal) patch.total = this.pendingExpenseTotals.get(id);
-    if (Object.keys(patch).length === 0) { this.ui.toast('No changes to save', 'info'); return; }
+    if (Object.keys(patch).length === 0) { this.notify.info('No changes to save'); return; }
     this.ui.showLoading();
-    try { await this.store.updateExpense(id, patch); this.ui.toast('Expense saved', 'success'); }
-    catch { this.ui.toast('Failed to save expense', 'error'); }
+    try { await this.store.updateExpense(id, patch); this.notify.success('Expense saved'); }
+    catch { this.notify.error('Failed to save expense'); }
     finally { this.ui.hideLoading(); this.pendingExpenseNames.delete(id); this.pendingExpenseTotals.delete(id); }
   }
 
@@ -108,78 +113,85 @@ export class AppComponent {
   }
 
   async onNameCommit(id: string, value: any) {
-    if (this.usingApi && !this.isAdmin()) return;
+    if (this.usingApi && !this.canMutate()) return;
     const current = this.store.participants().find(p => p.id === id)?.name ?? '';
-    if (String(value ?? '').trim() === current) { this.ui.toast('No changes to save', 'info'); return; }
+    if (String(value ?? '').trim() === current) { this.notify.info('No changes to save'); return; }
     this.ui.showLoading();
-    try { await this.store.setParticipantName(id, String(value)); this.ui.toast('Name updated', 'success'); }
-    catch { this.ui.toast('Failed to update name', 'error'); }
+    try { await this.store.setParticipantName(id, String(value)); this.notify.success('Name updated'); }
+    catch { this.notify.error('Failed to update name'); }
     finally { this.ui.hideLoading(); }
   }
 
   async onIncomeCommit(id: string, value: any) {
-    if (this.usingApi && !this.isAdmin()) return;
+    if (this.usingApi && !this.canMutate()) return;
     const current = this.store.participants().find(p => p.id === id)?.income ?? 0;
     const next = this.toNumber(value);
-    if (next === current) { this.ui.toast('No changes to save', 'info'); return; }
+    if (next === current) { this.notify.info('No changes to save'); return; }
     this.ui.showLoading();
-    try { await this.store.setParticipantIncome(id, next); this.ui.toast('Income updated', 'success'); }
-    catch { this.ui.toast('Failed to update income', 'error'); }
+    try { await this.store.setParticipantIncome(id, next); this.notify.success('Income updated'); }
+    catch { this.notify.error('Failed to update income'); }
     finally { this.ui.hideLoading(); }
   }
 
   async onExpenseNameCommit(id: string, value: any) {
-    if (this.usingApi && !this.isAdmin()) return;
+    if (this.usingApi && !this.canMutate()) return;
     const current = this.store.expenses().find(e => e.id === id)?.name ?? '';
-    if (String(value ?? '').trim() === current) { this.ui.toast('No changes to save', 'info'); return; }
+    if (String(value ?? '').trim() === current) { this.notify.info('No changes to save'); return; }
     this.ui.showLoading();
-    try { await this.store.updateExpense(id, { name: String(value) }); this.ui.toast('Expense updated', 'success'); }
-    catch { this.ui.toast('Failed to update expense', 'error'); }
+    try { await this.store.updateExpense(id, { name: String(value) }); this.notify.success('Expense updated'); }
+    catch { this.notify.error('Failed to update expense'); }
     finally { this.ui.hideLoading(); }
   }
 
   async onExpenseTotalCommit(id: string, value: any) {
-    if (this.usingApi && !this.isAdmin()) return;
+    if (this.usingApi && !this.canMutate()) return;
     const current = this.store.expenses().find(e => e.id === id)?.total ?? 0;
     const next = this.toNumber(value);
-    if (next === current) { this.ui.toast('No changes to save', 'info'); return; }
+    if (next === current) { this.notify.info('No changes to save'); return; }
     this.ui.showLoading();
-    try { await this.store.updateExpense(id, { total: next }); this.ui.toast('Expense updated', 'success'); }
-    catch { this.ui.toast('Failed to update expense', 'error'); }
+    try { await this.store.updateExpense(id, { total: next }); this.notify.success('Expense updated'); }
+    catch { this.notify.error('Failed to update expense'); }
     finally { this.ui.hideLoading(); }
   }
 
   async addPerson() {
-    if (this.usingApi && !this.isAdmin()) return;
+    if (this.usingApi && !this.canMutate()) return;
     this.ui.showLoading();
-    try { await this.store.addParticipant(); this.ui.toast('Person added', 'success'); }
-    catch { this.ui.toast('Failed to add person', 'error'); }
+    try { await this.store.addParticipant(); this.notify.success('Person added'); }
+    catch { this.notify.error('Failed to add person'); }
     finally { this.ui.hideLoading(); }
   }
 
   async removePerson(id: string) {
-    if (this.usingApi && !this.isAdmin()) return;
+    if (this.usingApi && !this.canMutate()) return;
     this.ui.showLoading();
-    try { await this.store.removeParticipant(id); this.ui.toast('Person removed', 'success'); }
-    catch { this.ui.toast('Failed to remove person', 'error'); }
+    try { await this.store.removeParticipant(id); this.notify.success('Person removed'); }
+    catch { this.notify.error('Failed to remove person'); }
     finally { this.ui.hideLoading(); }
   }
 
   async removeExpenseAction(id: string) {
-    if (this.usingApi && !this.isAdmin()) return;
+    if (this.usingApi && !this.canMutate()) return;
     this.ui.showLoading();
-    try { await this.store.removeExpense(id); this.ui.toast('Expense removed', 'success'); }
-    catch { this.ui.toast('Failed to remove expense', 'error'); }
+    try { await this.store.removeExpense(id); this.notify.success('Expense removed'); }
+    catch { this.notify.error('Failed to remove expense'); }
     finally { this.ui.hideLoading(); }
   }
 
   async login() {
+    const email = String(this.email || '').trim();
+    const password = String(this.password || '');
+    if (!email || !password) { this.notify.error('Preencha o email e a palavra‑passe.'); return; }
+    this.ui.showLoading();
     try {
-      await this.auth.signInWithPassword(this.email, this.password);
+      await this.auth.signIn(email, password);
       this.email = '';
       this.password = '';
-    } catch (e) {
-      console.error('Login failed', e);
+      this.notify.success('Sessão iniciada.');
+    } catch (e: any) {
+      this.notify.error(e?.message || 'Não foi possível iniciar sessão.');
+    } finally {
+      this.ui.hideLoading();
     }
   }
 
