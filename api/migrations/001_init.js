@@ -12,6 +12,7 @@ exports.up = async function up(knex) {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.uuid('budget_id').notNullable().references('id').inTable('budgets').onDelete('CASCADE');
     t.string('name').notNullable();
+    t.string('email').unique();
     t.decimal('income', 14, 2).notNullable().defaultTo(0);
   });
 
@@ -20,6 +21,8 @@ exports.up = async function up(knex) {
     t.uuid('budget_id').notNullable().references('id').inTable('budgets').onDelete('CASCADE');
     t.string('name').notNullable();
     t.decimal('total', 14, 2).notNullable().defaultTo(0);
+    // Ownership: which user created/owns the expense
+    t.string('owner_user_id').notNullable().defaultTo('');
   });
 };
 
@@ -29,4 +32,3 @@ exports.down = async function down(knex) {
   await knex.schema.dropTableIfExists('participants');
   await knex.schema.dropTableIfExists('budgets');
 };
-

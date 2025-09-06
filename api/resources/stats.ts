@@ -7,11 +7,16 @@ import { budgetRepo } from '../repositories/budgetRepo';
 async function expensesWithAllocations(budgetId: string) {
   const repo = budgetRepo();
   const expenses = await repo.listExpenses(budgetId);
-  const participants = await repo.listParticipants(budgetId);
-  return expenses.map(e => ({
-    ...e,
-    allocations: splitByIncome(e.total, participants),
-  }));
+  const results: any[] = [];
+  for (const e of expenses) {
+    const participantsAt = await (repo as any).getParticipantsIncomeAt?.(budgetId, (e as any).created_at || new Date().toISOString())
+      || await repo.listParticipants(budgetId);
+    results.push({
+      ...e,
+      allocations: splitByIncome((e as any).total || 0, participantsAt as any),
+    });
+  }
+  return results;
 }
 
 async function totalsPerParticipant(budgetId: string) {
@@ -30,9 +35,17 @@ async function totalsPerParticipant(budgetId: string) {
 export function registerStats(router: Router): void {
   router.add('GET', '/stats', withAuth('user', async (req, res) => {
     const userId = ((req as any).user?.id as string) || 'anon';
+    const userEmail = String((req as any).user?.email || '').toLowerCase();
     const repo = budgetRepo();
     const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
-    const participants = await repo.listParticipants(budgetId);
+    let participants = await repo.listParticipants(budgetId);
+    try {
+      if (userEmail && !participants.some(p => (p.email || '').toLowerCase() === userEmail)) {
+        const name = userEmail.split('@')[0] || 'You';
+        await repo.addParticipant(budgetId, name, 0, userEmail);
+        participants = await repo.listParticipants(budgetId);
+      }
+    } catch {}
     const expenses = await repo.listExpenses(budgetId);
     const totalIncome = participants.reduce((acc, p) => acc + (p.income || 0), 0);
     const participantShares = participants.map(p => ({

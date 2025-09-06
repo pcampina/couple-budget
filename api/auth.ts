@@ -1,6 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { send } from './utils';
 import crypto from 'node:crypto';
+import { userRepo } from './repositories/userRepo';
 
 type JwtPayload = {
   sub?: string;
@@ -24,7 +25,7 @@ function safeEqual(a: Buffer, b: Buffer): boolean {
   return crypto.timingSafeEqual(a, b);
 }
 
-function verifyHS256(token: string, secret: string): JwtPayload | null {
+export function verifyHS256(token: string, secret: string): JwtPayload | null {
   const parts = token.split('.');
   if (parts.length !== 3) return null;
   const [h, p, s] = parts;
@@ -43,6 +44,20 @@ function verifyHS256(token: string, secret: string): JwtPayload | null {
   }
 }
 
+function b64urlEncode(buf: Buffer): string {
+  return buf.toString('base64').replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+}
+
+export function signHS256(payload: JwtPayload, secret: string): string {
+  const header = { alg: 'HS256', typ: 'JWT' };
+  const h = b64urlEncode(Buffer.from(JSON.stringify(header)));
+  const p = b64urlEncode(Buffer.from(JSON.stringify(payload)));
+  const data = `${h}.${p}`;
+  const sig = crypto.createHmac('sha256', secret).update(data).digest();
+  const s = b64urlEncode(sig);
+  return `${data}.${s}`;
+}
+
 function extractRole(payload: JwtPayload): 'admin' | 'user' | 'authenticated' | undefined {
   const roles = payload.app_metadata?.roles || [];
   if (roles.includes('admin')) return 'admin';
@@ -56,9 +71,20 @@ export function withAuth<P extends any[]>(
   handler: (req: IncomingMessage, res: ServerResponse, ...rest: P) => unknown | Promise<unknown>
 ) {
   return async (req: IncomingMessage, res: ServerResponse, ...rest: P) => {
-    const secret = process.env.AUTH_JWT_SECRET; // Supabase JWT secret
+    const secret = process.env.AUTH_JWT_SECRET; // JWT secret
     if (!secret) {
-      // Auth disabled — allow all in development/testing
+      // Dev mode: try to parse token payload without verifying, so downstream has user info
+      try {
+        const auth = String(req.headers['authorization'] || '');
+        const m = auth.match(/^Bearer\s+(.+)$/i);
+        if (m) {
+          const parts = m[1].split('.');
+          if (parts.length === 3) {
+            const payload = JSON.parse(b64urlDecode(parts[1]).toString('utf-8')) as any;
+            (req as any).user = { id: payload?.sub || 'dev-user', role: extractRole(payload), email: payload?.email };
+          }
+        }
+      } catch {}
       return handler(req, res, ...rest);
     }
     const auth = String(req.headers['authorization'] || '');
@@ -67,13 +93,23 @@ export function withAuth<P extends any[]>(
     const payload = verifyHS256(m[1], secret);
     if (!payload) return send(res, 401, { error: 'Invalid token' });
     const role = extractRole(payload);
+    // Backfill email if missing in token (for legacy tokens)
+    let email = (payload as any)?.email as string | undefined;
+    if (!email && payload.sub) {
+      try {
+        const repo = userRepo() as any;
+        const byId = await (repo.findById ? repo.findById(payload.sub) : null);
+        email = (byId && byId.email) || email;
+      } catch {}
+    }
     if (minRole === 'admin') {
       if (role !== 'admin') return send(res, 403, { error: 'Forbidden' });
     } else {
-      if (!role && payload.role !== 'authenticated') return send(res, 403, { error: 'Forbidden' });
+      const hasMinimalAccess = role === 'admin' || role === 'user' || payload.role === 'authenticated' || !!payload.sub;
+      if (!hasMinimalAccess) return send(res, 403, { error: 'Forbidden' });
     }
     // Attach auth to request for downstream if needed
-    (req as any).user = { id: payload.sub, role };
+    (req as any).user = { id: payload.sub, role, email };
     return handler(req, res, ...rest);
   };
 }
