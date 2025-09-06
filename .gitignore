@@ -40,6 +40,7 @@ testem.log
 # API build output and generated public config
 /dist-api
 /public/config.js
+/src/assets/config.js
 
 # System files
 .DS_Store
@@ -47,3 +48,5 @@ Thumbs.db
 
 # Environment
 .env
+.env.*
+!.env.example
