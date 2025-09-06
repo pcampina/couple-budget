@@ -26,6 +26,7 @@ const cfg = {
   __API_URL__: process.env.API_URL,
   __SUPABASE_URL__: process.env.SUPABASE_URL,
   __SUPABASE_ANON_KEY__: process.env.SUPABASE_ANON_KEY,
+  __DEBUG__: process.env.DEBUG,
 };
 
 const lines = [
@@ -33,13 +34,20 @@ const lines = [
   '(function(w){',
   ...Object.entries(cfg)
     .filter(([, v]) => v != null && v !== '')
-    .map(([k, v]) => `  w.${k} = ${JSON.stringify(v)};`),
+    .map(([k, v]) => {
+      if (k === '__USE_API__' || k === '__DEBUG__') {
+        const s = String(v).trim().toLowerCase();
+        const boolVal = s === 'true' || s === '1' ? 'true' : 'false';
+        return `  w.${k} = ${boolVal};`;
+      }
+      return `  w.${k} = ${JSON.stringify(v)};`;
+    }),
   '})(window);',
   '',
 ];
 
+// Write into public so Angular dev server serves it at /config.js
 const outDir = path.join(ROOT, 'public');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 fs.writeFileSync(path.join(outDir, 'config.js'), lines.join('\n'));
 console.log('Wrote public/config.js from .env');
-
