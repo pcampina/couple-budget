@@ -5,14 +5,18 @@
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
-
     "baseUrl": "./",
     "paths": {
-      "@app/*": ["src/app/*"],
-      "@domain/*": ["src/app/domain/*"],
-      "@application/*": ["src/app/application/*"]
+      "@app/*": [
+        "src/app/*"
+      ],
+      "@domain/*": [
+        "src/app/domain/*"
+      ],
+      "@application/*": [
+        "src/app/application/*"
+      ]
     },
-
     "outDir": "./dist/out-tsc",
     "forceConsistentCasingInFileNames": true,
     "strict": true,
