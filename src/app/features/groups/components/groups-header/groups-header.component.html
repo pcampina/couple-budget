@@ -1,0 +1,54 @@
+<!-- Unified Groups header: select/create/manage -->
+<div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap; margin-bottom: 8px;">
+  @if (groupService.selectedGroup()) {
+  <label>
+    <span class="text text--muted">Group</span>
+    <select class="input" [ngModel]="groupService.selectedGroup()?.id" (ngModelChange)="onSelectGroup($event)">
+      @for (g of groupService.groups(); track g.id) { <option [ngValue]="g.id">{{ g.name }} ({{ g.role }}) — {{ g.shared ? 'shared'
+        : 'private' }}</option> }
+    </select>
+  </label>
+  <button class="button button--danger-ghost button--sm" (click)="deleteGroup()" [disabled]="!canEditSelectedGroup()"
+    style="margin-left:auto;">Delete</button>
+  }
+  @if (!groupService.selectedGroup()) {
+  <form (submit)="$event.preventDefault(); createGroup()" style="display:flex; gap:8px; align-items:center;">
+    <input class="input" placeholder="New group name" [ngModel]="groupService.groupNameInput()"
+      (ngModelChange)="groupService.groupNameInput.set($event)" name="gname" />
+    <button class="button button--success button--sm" [disabled]="!groupService.groupNameInput().trim()"
+      type="submit">Create</button>
+  </form>
+  }
+</div>
+
+@if (!groupService.selectedGroup()) {
+<div class="data-table" role="table" aria-label="Groups list">
+  <div class="data-table__head" role="rowgroup">
+    <div class="data-table__row" role="row" style="grid-template-columns: 2fr 1fr 1fr 200px;">
+      <div class="data-table__cell data-table__cell--head" role="columnheader">Name</div>
+      <div class="data-table__cell data-table__cell--head" role="columnheader">Role</div>
+      <div class="data-table__cell data-table__cell--head" role="columnheader">Visibility</div>
+      <div class="data-table__cell data-table__cell--head" role="columnheader"></div>
+    </div>
+  </div>
+  <div class="data-table__body" role="rowgroup">
+    @for (g of groupService.groups(); track g.id) {
+    <div class="data-table__row" role="row" style="grid-template-columns: 2fr 1fr 1fr 200px;">
+      <div class="data-table__cell">{{ g.name }}</div>
+      <div class="data-table__cell"><span class="chip">{{ g.role }}</span></div>
+      <div class="data-table__cell"><span class="chip">{{ g.shared ? 'shared' : 'private' }}</span></div>
+      <div class="data-table__cell data-table__cell--actions">
+        <button class="button button--sm" (click)="onSelectGroup(g.id)">Open</button>
+        <button class="button button--ghost button--sm" (click)="openGroupSettings(g.id)"
+          title="Edit group">Edit</button>
+      </div>
+    </div>
+    }
+    @if (groupService.groups().length === 0) {
+    <div class="data-table__row data-table__row--empty">
+      <div class="data-table__cell">No groups yet. Create one above.</div>
+    </div>
+    }
+  </div>
+</div>
+}

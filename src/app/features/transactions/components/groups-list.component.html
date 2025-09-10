@@ -1,0 +1,37 @@
+<section class="budget__section card card--glass">
+  <h2>Groups</h2>
+  <p class="text text--muted">Create a group and start adding transactions inside it.</p>
+
+  <form (submit)="$event.preventDefault(); create()" style="display:flex; gap:8px; align-items:center; margin: 8px 0;">
+    <input class="input" placeholder="New group name" [(ngModel)]="name" name="name" />
+    <button class="button button--success" [disabled]="!name.trim()" type="submit">Create group</button>
+  </form>
+
+  <div class="data-table" role="table" aria-label="Groups list">
+    <div class="data-table__head" role="rowgroup">
+      <div class="data-table__row" role="row" style="grid-template-columns: 2fr 1fr 1fr 140px;">
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Name</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Role</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Visibility</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader"></div>
+      </div>
+    </div>
+    <div class="data-table__body" role="rowgroup">
+      @for (g of groups(); track g.id) {
+      <div class="data-table__row" role="row" style="grid-template-columns: 2fr 1fr 1fr 140px;">
+        <div class="data-table__cell">{{ g.name }}</div>
+        <div class="data-table__cell"><span class="chip">{{ g.role }}</span></div>
+        <div class="data-table__cell"><span class="chip">{{ g.shared ? 'shared' : 'private' }}</span></div>
+        <div class="data-table__cell data-table__cell--actions">
+          <button class="button button--sm" (click)="open(g.id)">Open</button>
+        </div>
+      </div>
+      }
+      @if (groups().length === 0) {
+      <div class="data-table__row data-table__row--empty">
+        <div class="data-table__cell">No groups yet.</div>
+      </div>
+      }
+    </div>
+  </div>
+</section>
