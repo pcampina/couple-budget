@@ -6,6 +6,7 @@ export interface Expense {
   name: string;
   total: number;
   type?: string;
+  paid?: boolean;
 }
 
 export interface Participant {

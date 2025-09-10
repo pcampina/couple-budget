@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 
 export interface ApiParticipant { id: string; name: string; income: number; email?: string | null }
-export interface ApiExpense { id: string; name: string; total: number; type_code?: string }
+export interface ApiExpense { id: string; name: string; total: number; type_code?: string; paid?: boolean }
 export interface ApiTransactionType { code: string; name: string }
 export interface ApiActivity { id: string; action: string; entity_type: string; entity_id: string; payload: any; created_at: string }
 export interface ApiPaged<T> { items: T[]; total: number; page: number; pageSize: number }
@@ -23,46 +23,52 @@ export class ApiService {
 
   constructor(private http: HttpClient) {}
 
-  // Participants
-  listParticipants(): Promise<ApiParticipant[]> {
-    return firstValueFrom(this.http.get<ApiParticipant[]>(this.baseUrl + '/participants'));
+  private u(path: string, groupId?: string): string {
+    if (!groupId) return this.baseUrl + path;
+    const sep = path.includes('?') ? '&' : '?';
+    return this.baseUrl + path + `${sep}group=${encodeURIComponent(groupId)}`;
   }
-  addParticipant(name: string, income: number, email?: string): Promise<ApiParticipant> {
+
+  // Participants
+  listParticipants(groupId?: string): Promise<ApiParticipant[]> {
+    return firstValueFrom(this.http.get<ApiParticipant[]>(this.u('/participants', groupId)));
+  }
+  addParticipant(name: string, income: number, email?: string, groupId?: string): Promise<ApiParticipant> {
     const payload: any = { name, income };
     if (email) payload.email = email;
-    return firstValueFrom(this.http.post<ApiParticipant>(this.baseUrl + '/participants', payload));
+    return firstValueFrom(this.http.post<ApiParticipant>(this.u('/participants', groupId), payload));
   }
-  updateParticipant(id: string, patch: Partial<ApiParticipant>): Promise<ApiParticipant> {
-    return firstValueFrom(this.http.patch<ApiParticipant>(this.baseUrl + `/participants/${id}`, patch));
+  updateParticipant(id: string, patch: Partial<ApiParticipant>, groupId?: string): Promise<ApiParticipant> {
+    return firstValueFrom(this.http.patch<ApiParticipant>(this.u(`/participants/${id}`, groupId), patch));
   }
-  updateSelfParticipant(patch: Partial<ApiParticipant>): Promise<ApiParticipant> {
-    return firstValueFrom(this.http.patch<ApiParticipant>(this.baseUrl + `/participants/me`, patch));
+  updateSelfParticipant(patch: Partial<ApiParticipant>, groupId?: string): Promise<ApiParticipant> {
+    return firstValueFrom(this.http.patch<ApiParticipant>(this.u(`/participants/me`, groupId), patch));
   }
-  deleteParticipant(id: string): Promise<void> {
-    return firstValueFrom(this.http.delete<void>(this.baseUrl + `/participants/${id}`));
+  deleteParticipant(id: string, groupId?: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(this.u(`/participants/${id}`, groupId)));
   }
 
   // Expenses
-  listExpenses(): Promise<ApiExpense[]> {
-    return firstValueFrom(this.http.get<ApiExpense[]>(this.baseUrl + '/expenses'));
+  listExpenses(groupId?: string): Promise<ApiExpense[]> {
+    return firstValueFrom(this.http.get<ApiExpense[]>(this.u('/expenses', groupId)));
   }
-  listExpensesPaged(page: number, limit = 20): Promise<ApiPaged<ApiExpense>> {
+  listExpensesPaged(page: number, limit = 20, groupId?: string): Promise<ApiPaged<ApiExpense>> {
     const params = new URLSearchParams({ page: String(page), limit: String(limit) });
-    return firstValueFrom(this.http.get<ApiPaged<ApiExpense>>(this.baseUrl + '/expenses?' + params.toString()));
+    return firstValueFrom(this.http.get<ApiPaged<ApiExpense>>(this.u('/expenses?' + params.toString(), groupId)));
   }
-  addExpense(name: string, total: number, type: string = 'expense'): Promise<ApiExpense> {
-    return firstValueFrom(this.http.post<ApiExpense>(this.baseUrl + '/expenses', { name, total, type }));
+  addExpense(name: string, total: number, type: string = 'expense', groupId?: string): Promise<ApiExpense> {
+    return firstValueFrom(this.http.post<ApiExpense>(this.u('/expenses', groupId), { name, total, type }));
   }
-  updateExpense(id: string, patch: Partial<ApiExpense> & { type?: string }): Promise<ApiExpense> {
-    return firstValueFrom(this.http.patch<ApiExpense>(this.baseUrl + `/expenses/${id}`, patch));
+  updateExpense(id: string, patch: Partial<ApiExpense> & { type?: string }, groupId?: string): Promise<ApiExpense> {
+    return firstValueFrom(this.http.patch<ApiExpense>(this.u(`/expenses/${id}`, groupId), patch));
   }
-  deleteExpense(id: string): Promise<void> {
-    return firstValueFrom(this.http.delete<void>(this.baseUrl + `/expenses/${id}`));
+  deleteExpense(id: string, groupId?: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(this.u(`/expenses/${id}`, groupId)));
   }
 
   // Stats
-  getStats(): Promise<ApiStats> {
-    return firstValueFrom(this.http.get<ApiStats>(this.baseUrl + '/stats'));
+  getStats(groupId?: string): Promise<ApiStats> {
+    return firstValueFrom(this.http.get<ApiStats>(this.u('/stats', groupId)));
   }
 
   // Activities
@@ -72,8 +78,50 @@ export class ApiService {
   }
 
   // Group
-  listGroupMembers(): Promise<{ id: string; name: string; email: string | null; accepted: boolean }[]> {
-    return firstValueFrom(this.http.get<{ id: string; name: string; email: string | null; accepted: boolean }[]>(this.baseUrl + '/group/members'));
+  listGroupMembers(groupId?: string): Promise<{ id: string; name: string; email: string | null; accepted: boolean }[]> {
+    return firstValueFrom(this.http.get<{ id: string; name: string; email: string | null; accepted: boolean }[]>(this.u('/group/members', groupId)));
+  }
+  listGroups(): Promise<{ id: string; name: string; role: 'owner' | 'member'; shared?: boolean }[]> {
+    return firstValueFrom(this.http.get<{ id: string; name: string; role: 'owner' | 'member'; shared?: boolean }[]>(this.baseUrl + '/groups'));
+  }
+  createGroup(name: string): Promise<{ id: string; name: string; owner_user_id?: string }> {
+    return firstValueFrom(this.http.post<{ id: string; name: string; owner_user_id?: string }>(this.baseUrl + '/groups', { name }));
+  }
+  renameGroup(id: string, name: string): Promise<{ id: string; name: string }> {
+    return firstValueFrom(this.http.patch<{ id: string; name: string }>(this.baseUrl + `/groups/${id}`, { name }));
+  }
+  deleteGroup(id: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(this.baseUrl + `/groups/${id}`));
+  }
+  sendInvites(groupId: string, emails: string[]): Promise<{ id: string; email: string; token: string; created_at: string }[]> {
+    return firstValueFrom(this.http.post<{ id: string; email: string; token: string; created_at: string }[]>(this.baseUrl + `/groups/${groupId}/invites`, { emails }));
+  }
+  listInvites(groupId: string): Promise<{ id: string; email: string; token: string; created_at: string; accepted_at?: string | null }[]> {
+    return firstValueFrom(this.http.get<{ id: string; email: string; token: string; created_at: string; accepted_at?: string | null }[]>(this.baseUrl + `/groups/${groupId}/invites`));
+  }
+  listMyInvites(groupId: string): Promise<{ id: string; email: string; created_at: string; accepted_at?: string | null }[]> {
+    return firstValueFrom(this.http.get<{ id: string; email: string; created_at: string; accepted_at?: string | null }[]>(this.baseUrl + `/groups/${groupId}/my-invites`));
+  }
+  revokeInvite(groupId: string, inviteId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(this.baseUrl + `/groups/${groupId}/invites/${inviteId}`));
+  }
+  resendInvite(groupId: string, inviteId: string): Promise<{ id: string; email: string; token: string; created_at: string }> {
+    return firstValueFrom(this.http.post<{ id: string; email: string; token: string; created_at: string }>(this.baseUrl + `/groups/${groupId}/invites/${inviteId}/resend`, {}));
+  }
+  removeGroupMember(groupId: string, participantId: string): Promise<void> {
+    return firstValueFrom(this.http.delete<void>(this.baseUrl + `/groups/${groupId}/members/${participantId}`));
+  }
+  leaveGroup(groupId: string): Promise<void> {
+    return firstValueFrom(this.http.post<void>(this.baseUrl + `/groups/${groupId}/leave`, {}));
+  }
+  acceptInviteById(groupId: string, inviteId: string): Promise<{ budget_id: string; status: 'accepted' }> {
+    return firstValueFrom(this.http.post<{ budget_id: string; status: 'accepted' }>(this.baseUrl + `/groups/${groupId}/invites/${inviteId}/accept`, {}));
+  }
+  rejectInviteById(groupId: string, inviteId: string): Promise<{ status: string }> {
+    return firstValueFrom(this.http.post<{ status: string }>(this.baseUrl + `/groups/${groupId}/invites/${inviteId}/reject`, {}));
+  }
+  acceptInvite(token: string): Promise<{ budget_id: string; status: 'accepted' }> {
+    return firstValueFrom(this.http.post<{ budget_id: string; status: 'accepted' }>(this.baseUrl + `/invites/accept`, { token }));
   }
 
   // Auth
@@ -91,5 +139,13 @@ export class ApiService {
   // Transaction types
   listTransactionTypes(): Promise<ApiTransactionType[]> {
     return firstValueFrom(this.http.get<ApiTransactionType[]>(this.baseUrl + '/transaction-types'));
+  }
+
+  // User
+  getUsersMe(): Promise<any> {
+    return firstValueFrom(this.http.get<any>(this.u(`/users/me`)));
+  }
+  updateUser(patch: { default_income?: number }): Promise<any> {
+    return firstValueFrom(this.http.patch<any>(this.u(`/users/me`), patch));
   }
 }

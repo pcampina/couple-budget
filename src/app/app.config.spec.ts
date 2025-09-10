@@ -24,19 +24,22 @@ vi.mock('@angular/router', () => ({
 }));
 
 // Mock local components used in route definitions to avoid Angular JIT
-vi.mock('./components/login/login.component', () => ({ LoginComponent: class {} }));
-vi.mock('./app.component', () => ({ AppComponent: class {} }));
-vi.mock('./components/layout/layout.component', () => ({ LayoutComponent: class {} }));
-vi.mock('./components/settings/config-page.component', () => ({ ConfigPageComponent: class {} }));
-vi.mock('./components/transactions/expenses-page.component', () => ({ ExpensesPageComponent: class {} }));
-vi.mock('./components/group/group-page.component', () => ({ GroupPageComponent: class {} }));
-vi.mock('./components/activity/activity-page.component', () => ({ ActivityPageComponent: class {} }));
+vi.mock('@app/features/login/components/login.component', () => ({ LoginComponent: class {} }));
+vi.mock('@app/app.component', () => ({ AppComponent: class {} }));
+vi.mock('@app/shared/components/layout.component', () => ({ LayoutComponent: class {} }));
+vi.mock('@app/features/settings/components/config-page.component', () => ({ ConfigPageComponent: class {} }));
+vi.mock('@app/features/transactions/components/expenses-page.component', () => ({ ExpensesPageComponent: class {} }));
+vi.mock('@app/features/transactions/components/groups-list.component', () => ({ GroupsListComponent: class {} }));
+
+vi.mock('@app/features/groups/components/group-page.component', () => ({ GroupPageComponent: class {} }));
+vi.mock('@app/features/activity/components/activity-page.component', () => ({ ActivityPageComponent: class {} }));
+vi.mock('@app/features/invite-accept/components/invite-accept.component', () => ({ InviteAcceptComponent: class {} }));
 
 // Mock the auth modules to prevent Router compilation issues
-vi.mock('./infrastructure/auth.interceptor', () => ({
+vi.mock('@app/infrastructure/auth.interceptor', () => ({
   authInterceptor: 'auth-interceptor'
 }));
-vi.mock('./infrastructure/auth.guard', () => ({
+vi.mock('@app/infrastructure/auth.guard', () => ({
   authGuard: 'auth-guard'
 }));
 
