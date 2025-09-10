@@ -9,10 +9,11 @@ vi.mock('@angular/core', () => {
   return { Injectable, signal, computed, inject, ViewEncapsulation, Component };
 });
 
-vi.mock('@angular/common', () => ({ CurrencyPipe: class {} }));
+vi.mock('@angular/common', () => ({ CurrencyPipe: class {}, DecimalPipe: class {}, NgFor: {}, NgIf: {} }));
 vi.mock('@angular/forms', () => ({ FormsModule: {} }));
+vi.mock('@angular/router', () => ({ ActivatedRoute: class { paramMap = { subscribe(){} } }, Router: class {} }));
 
-import { ExpensesPageComponent } from './expenses-page.component';
+import { ExpensesPageComponent } from '@app/features/transactions/components/expenses-page.component';
 
 describe('ExpensesPageComponent', () => {
   it('maps type code to label and handles fallbacks', () => {

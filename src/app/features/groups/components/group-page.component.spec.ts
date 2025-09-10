@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
 // Mock Angular core minimal APIs used
 vi.mock('@angular/core', () => {
@@ -15,31 +15,43 @@ vi.mock('@angular/core', () => {
 });
 
 vi.mock('@angular/common', () => ({ DecimalPipe: class {} }));
+vi.mock('@angular/router', () => ({
+  ActivatedRoute: class { paramMap = { subscribe: vi.fn() } },
+}));
 
 import { GroupPageComponent } from './group-page.component';
 
 describe('GroupPageComponent', () => {
-  it('loads members and computes percent shares', async () => {
-    const api = { listGroupMembers: vi.fn().mockResolvedValue([
-      { id: 'p1', name: 'Alice', email: 'a@x.com', accepted: true },
-      { id: 'p2', name: 'Bob', email: 'b@x.com', accepted: false },
-    ]) };
-    const auth = {};
-    const notify = { success: vi.fn(), error: vi.fn() };
-    const errors = { handle: vi.fn() };
-    const store = {
-      participantShares: vi.fn(() => [{ id: 'p1', share: 0.6 }, { id: 'p2', share: 0.4 }]),
-      refreshFromApi: vi.fn(async () => {})
-    };
-    (globalThis as any).__setInjectQueue([api, auth, notify, errors, store]);
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
 
-  const comp = new GroupPageComponent();
-    // allow async load to finish
-    await Promise.resolve();
-    await Promise.resolve();
-    expect(store.refreshFromApi).toHaveBeenCalled();
-    expect(api.listGroupMembers).toHaveBeenCalled();
-    expect(comp.members().length).toBe(2);
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('loads members and computes percent shares', async () => {
+    const groupService = {
+      loadGroupData: vi.fn().mockResolvedValue(true),
+      members: vi.fn(() => [
+        { id: 'p1', name: 'Alice', email: 'a@x.com', accepted: true },
+        { id: 'p2', name: 'Bob', email: 'b@x.com', accepted: false },
+      ]),
+      isOwner: vi.fn(() => true),
+      lastInvites: vi.fn(() => []),
+      pendingInvites: vi.fn(() => []),
+      inviteEmails: vi.fn(() => '')
+    };
+    const store = {
+      participantShares: vi.fn(() => [{ id: 'p1', name: 'Alice', share: 0.6 }, { id: 'p2', name: 'Bob', share: 0.4 }]),
+    };
+    const route = { paramMap: { subscribe: (fn: any) => fn({ get: () => 'group-1' }) } };
+    (globalThis as any).__setInjectQueue([store, groupService, route]);
+
+    const comp = new GroupPageComponent();
+    await vi.runAllTimersAsync();
+
+    expect(groupService.loadGroupData).toHaveBeenCalledWith('group-1');
     expect(comp.shareById()['p1']).toBeCloseTo(0.6, 5);
   });
 });

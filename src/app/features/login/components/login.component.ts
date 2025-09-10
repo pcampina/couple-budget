@@ -1,10 +1,10 @@
 import { Component, inject } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { AuthService } from '../../infrastructure/auth.service';
-import { UiService } from '../../infrastructure/ui.service';
-import { NotificationService } from '../../infrastructure/notification.service';
-import { ErrorService } from '../../infrastructure/error.service';
+import { AuthService } from '@app/infrastructure/auth.service';
+import { UiService } from '@app/infrastructure/ui.service';
+import { NotificationService } from '@app/infrastructure/notification.service';
+import { ErrorService } from '@app/infrastructure/error.service';
 
 @Component({
   selector: 'app-login',

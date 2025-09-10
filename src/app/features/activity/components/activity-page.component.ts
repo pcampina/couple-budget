@@ -1,8 +1,8 @@
 import { Component, ViewEncapsulation, inject, signal } from '@angular/core';
 import { DatePipe, JsonPipe, CurrencyPipe } from '@angular/common';
-import { ApiService, ApiActivity } from '../../infrastructure/api.service';
-import { AuthService } from '../../infrastructure/auth.service';
-import { ConfigService } from '../../infrastructure/config.service';
+import { ApiService, ApiActivity } from '@app/infrastructure/api.service';
+import { AuthService } from '@app/infrastructure/auth.service';
+import { ConfigService } from '@app/infrastructure/config.service';
 
 @Component({
   selector: 'app-activity-page',

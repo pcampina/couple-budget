@@ -1,12 +1,12 @@
 import { Component, ViewEncapsulation, inject, signal } from '@angular/core';
 import { CurrencyPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { BudgetStore } from '../../application/budget.store';
-import { AuthService } from '../../infrastructure/auth.service';
-import { UiService } from '../../infrastructure/ui.service';
-import { NotificationService } from '../../infrastructure/notification.service';
-import { ErrorService } from '../../infrastructure/error.service';
-import { ApiService } from '../../infrastructure/api.service';
+import { BudgetStore } from '@application/budget.store';
+import { AuthService } from '@app/infrastructure/auth.service';
+import { UiService } from '@app/infrastructure/ui.service';
+import { NotificationService } from '@app/infrastructure/notification.service';
+import { ErrorService } from '@app/infrastructure/error.service';
+import { ApiService } from '@app/infrastructure/api.service';
 
 @Component({
   selector: 'app-config-page',
@@ -28,6 +28,14 @@ export class ConfigPageComponent {
   meName: string | null = null;
   meEmail: string | null = null;
   meIncome: number | null = null;
+  readonly userProfile = signal<any>(null);
+
+  constructor() {
+    try {
+      this.store.refreshFromApi(true);
+      this.api.getUsersMe().then(profile => this.userProfile.set(profile));
+    } catch {}
+  }
 
   meParticipant() {
     const email = String((this.auth.user() as any)?.email || '').toLowerCase();
@@ -45,7 +53,7 @@ export class ConfigPageComponent {
     const u = this.auth.user() as any;
     return this.meEmail ?? (me?.email ?? (u?.email || ''));
   }
-  meIncomeValue() { return this.meIncome ?? (this.meParticipant()?.income ?? 0); }
+  meIncomeValue() { return this.meIncome ?? (this.meParticipant()?.income ?? this.userProfile()?.default_income ?? 0); }
   onMeNameInput(v: any) { this.meName = String(v); }
   onMeEmailInput(v: any) { this.meEmail = String(v); }
   onMeIncomeInput(v: any) { this.meIncome = this.toNumber(v); }
@@ -75,7 +83,16 @@ export class ConfigPageComponent {
     this.ui.showLoading();
     try {
       // Use self endpoint to allow non-admin users to update their profile
-      await this.api.updateSelfParticipant(patch);
+      const gid = (typeof (this.store as any).groupId === 'function') ? (this.store as any).groupId() : null;
+      
+      const promises = [];
+      if (patch.income != null) {
+        promises.push(this.api.updateUser({ default_income: patch.income }));
+      }
+      promises.push(this.api.updateSelfParticipant(patch, gid || undefined));
+
+      await Promise.all(promises);
+
       await this.store.refreshFromApi(true);
       this.notify.success('Profile updated');
       this.meName = this.meEmail = null; this.meIncome = null;

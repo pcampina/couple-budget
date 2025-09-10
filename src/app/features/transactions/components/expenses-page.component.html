@@ -1,6 +1,18 @@
 <section class="budget__section card card--glass">
   <h2>Transactions</h2>
 
+  <app-groups-header></app-groups-header>
+
+  <!-- Group split summary -->
+  <div class="chip-group" aria-label="Split by income">
+    @for (s of store.participantShares(); track s.id) {
+    <span class="chip">{{ s.name }}: {{ (s.share || 0) * 100 | number:'1.0-2' }}%</span>
+    }
+  </div>
+
+  <!-- Group selection and creation moved to group list page -->
+
+  @if (groupService.selectedGroup()) {
   <form class="form-add" (submit)="$event.preventDefault(); addFromForm()">
     <input class="input" placeholder="Transaction" [(ngModel)]="newName" name="name" required />
     <select class="input" [(ngModel)]="newType" name="type">
@@ -11,15 +23,18 @@
     <input class="input input--num" placeholder="Amount (€)" type="number" step="0.01" [(ngModel)]="newTotal"
       name="total" required />
     <button class="button button--success"
-      [disabled]="!newName || !isValid(newTotal) || store.participantCount() === 0 || (usingApi && !canMutateExpenses())">Add</button>
+      [disabled]="!newName || !isValid(newTotal) || (!usingApi && store.participantCount() === 0) || (usingApi && !canMutateExpenses())">Add</button>
   </form>
+  }
 
+  @if (groupService.selectedGroup()) {
   <div class="data-table" role="table" aria-label="Transactions list">
     <div class="data-table__head" role="rowgroup">
       <div class="data-table__row" role="row" [style.grid-template-columns]="gridTemplateColumns()">
         <div class="data-table__cell data-table__cell--head" role="columnheader">Transaction</div>
         <div class="data-table__cell data-table__cell--head" role="columnheader">Type</div>
         <div class="data-table__cell data-table__cell--head data-table__cell--num" role="columnheader">Amount (€)</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">Paid</div>
         @for (p of store.participants(); track p.id) {
         <div class="data-table__cell data-table__cell--head data-table__cell--num" role="columnheader">{{ p.name }}
         </div>
@@ -33,25 +48,34 @@
       <div class="data-table__row" role="row" [style.grid-template-columns]="gridTemplateColumns()">
         <div class="data-table__cell">
           <input class="input input--cell" [disabled]="usingApi && !canMutateExpenses()"
-            [value]="expenseNameValue(e.id, e.name)" (input)="onExpenseNameInput(e.id, $any($event.target).value)"
-            (keyup.enter)="saveExpense(e.id, e.name, e.total)" />
+            [value]="getDraftValue(e.id, 'name', e.name)" (input)="onExpenseInput(e.id, 'name', $any($event.target).value)"
+            (keyup.enter)="saveExpense(e.id)" />
         </div>
         <div class="data-table__cell">
           <span class="chip">{{ txTypeLabel(e) }}</span>
         </div>
         <div class="data-table__cell data-table__cell--num">
           <input class="input input--cell input--num" type="number" step="0.01"
-            [disabled]="usingApi && !canMutateExpenses()" [value]="expenseTotalValue(e.id, e.total)"
-            (input)="onExpenseTotalInput(e.id, $any($event.target).value)"
-            (keyup.enter)="saveExpense(e.id, e.name, e.total)" />
+            [disabled]="usingApi && !canMutateExpenses()" [value]="getDraftValue(e.id, 'total', e.total)"
+            (input)="onExpenseInput(e.id, 'total', toNumber($any($event.target).value))"
+            (keyup.enter)="saveExpense(e.id)" />
+        </div>
+        <div class="data-table__cell">
+          @if (txTypeLabel(e) === 'Expense') {
+          <label style="display:flex; align-items:center; gap:6px;">
+            <input type="checkbox" [checked]="!!e.paid" (change)="togglePaid(e.id, $any($event.target).checked)"
+              [disabled]="usingApi && !canMutateExpenses()" />
+            <span class="text text--muted">{{ e.paid ? 'paid' : 'unpaid' }}</span>
+          </label>
+          }
         </div>
         @for (p of store.participants(); track p.id) {
         <div class="data-table__cell data-table__cell--num">{{ e.allocations[p.id] | currency:'EUR':'symbol':'1.2-2' }}
         </div>
         }
         <div class="data-table__cell data-table__cell--actions">
-          @if (isExpenseDirty(e.id, e.name, e.total)) {
-          <button class="button button--sm" (click)="saveExpense(e.id, e.name, e.total)">Save</button>
+          @if (isExpenseDirty(e.id)) {
+          <button class="button button--sm" (click)="saveExpense(e.id)">Save</button>
           }
           <button class="button button--danger-ghost button--sm" [disabled]="usingApi && !canMutateExpenses()"
             (click)="removeExpenseAction(e.id)" [attr.aria-label]="'Remove expense ' + e.name">Remove</button>
@@ -65,7 +89,9 @@
       }
     </div>
   </div>
+  }
 
   <!-- Pagination hidden while allocations are server-computed per expense date -->
 </section>
 
+<!-- Members & invites moved to Group settings page -->
