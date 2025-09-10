@@ -19,14 +19,14 @@ This project was generated using [Angular CLI](https://github.com/angular/angula
 
 ## Development server
 
-Recommended local setup (API + Frontend):
+Recommended local setup (API + Frontend + Mailhog):
 
 ```bash
 # 1) Copy environment and adjust values
 cp .env.example .env
 
-# 2) Start Postgres (optional if you have a local DB)
-# docker compose up -d
+# 2) Start Postgres and Mailhog (optional if you have local services)
+# docker compose up -d db mailhog
 
 # 3) Run DB migrations (creates tables)
 npm run db:migrate
@@ -43,6 +43,27 @@ Notes:
 - `npm start` generates `public/config.js` from `.env` (via `scripts/gen-config.mjs`).
 - For API mode, set at least `USE_API=true` and `API_URL=http://localhost:3333`.
 - For DB persistence, set `SUPABASE_DB_URL` and run migrations. If unset, the API uses an in-memory store.
+
+### Email (Mailhog)
+
+For local email testing, the API can send invites via SMTP. Use Mailhog:
+
+```
+docker compose up -d mailhog
+# Web UI: http://localhost:8025
+# SMTP: localhost:1025
+```
+
+Set in `.env` (already defaults for Mailhog):
+
+```
+PUBLIC_APP_URL=http://localhost:4200
+SMTP_HOST=localhost
+SMTP_PORT=1025
+SMTP_FROM=CoupleBudget <noreply@example.com>
+```
+
+Invite emails include a link such as `http://localhost:4200/invite/<token>`.
 
 ## Code scaffolding
 
