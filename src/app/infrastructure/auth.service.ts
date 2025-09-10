@@ -1,5 +1,6 @@
 import { Injectable, computed, signal } from '@angular/core';
 import { ApiService } from './api.service';
+import { BudgetStore } from '../application/budget.store';
 
 type JwtPayload = {
   sub?: string;
@@ -16,7 +17,7 @@ export class AuthService {
   private storageKey = 'auth/token';
   private _token = signal<string | null>(null);
 
-  constructor(private api: ApiService) {
+  constructor(private api: ApiService, private budgetStore: BudgetStore) {
     try {
       const t = typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
       this._token.set(t);
@@ -71,6 +72,7 @@ export class AuthService {
 
   async signOut() {
     this._token.set(null);
+    this.budgetStore.clear();
     try { if (typeof localStorage !== 'undefined') localStorage.removeItem(this.storageKey); } catch {}
   }
 
