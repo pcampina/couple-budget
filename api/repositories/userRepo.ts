@@ -2,7 +2,7 @@ import { getDb } from '../db';
 import type { Knex } from 'knex';
 import crypto from 'node:crypto';
 
-export interface DbUser { id: string; email: string; name: string; password_salt: string; password_hash: string; role: 'admin' | 'user'; created_at: string }
+export interface DbUser { id: string; email: string; name: string; password_salt: string; password_hash: string; role: 'admin' | 'user'; created_at: string; default_income: number; }
 
 function hashPassword(password: string, salt: string): string {
   const hash = crypto.scryptSync(password, salt, 64);
@@ -26,7 +26,7 @@ function memory() {
       const id = crypto.randomUUID();
       const salt = crypto.randomBytes(16).toString('hex');
       const password_hash = hashPassword(password, salt);
-      const user: DbUser = { id, email, name, password_salt: salt, password_hash, role, created_at: new Date().toISOString() };
+      const user: DbUser = { id, email, name, password_salt: salt, password_hash, role, created_at: new Date().toISOString(), default_income: 0 };
       users.set(k, user);
       return user;
     },
@@ -36,6 +36,12 @@ function memory() {
       return null;
     },
     verifyPassword,
+    async updateUser(id: string, patch: Partial<DbUser>): Promise<DbUser | null> {
+        const user = Array.from(users.values()).find(u => u.id === id);
+        if (!user) return null;
+        Object.assign(user, patch);
+        return user;
+    }
   };
 }
 
@@ -54,7 +60,7 @@ function sqlRepo(db: Knex) {
       const password_hash = crypto.scryptSync(password, salt, 64).toString('hex');
       const [row] = await db('users')
         .insert({ email, name, password_salt: salt, password_hash, role })
-        .returning(['id', 'email', 'name', 'password_salt', 'password_hash', 'role', 'created_at']);
+        .returning('*');
       return row as any;
     },
     async findByEmail(email: string): Promise<DbUser | null> {
@@ -66,5 +72,12 @@ function sqlRepo(db: Knex) {
       return (row as any) || null;
     },
     verifyPassword,
+    async updateUser(id: string, patch: Partial<DbUser>): Promise<DbUser | null> {
+        const [row] = await db('users')
+            .where({ id })
+            .update(patch)
+            .returning('*');
+        return (row as any) || null;
+    }
   };
 }
