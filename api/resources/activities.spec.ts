@@ -4,6 +4,8 @@ import { createApp } from '../app';
 import supertest from 'supertest';
 import { localRequest } from '../test-utils';
 
+delete process.env.AUTH_JWT_SECRET;
+
 describe('activities resource', () => {
   const handler = createApp();
 
@@ -21,4 +23,3 @@ describe('activities resource', () => {
     expect(typeof page1.total).toBe('number');
   });
 });
-

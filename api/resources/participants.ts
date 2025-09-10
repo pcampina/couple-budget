@@ -7,7 +7,11 @@ export function registerParticipants(router: Router): void {
   router.add('GET', '/participants', withAuth('user', async (req, res) => {
     const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
+    const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const budgetId = qGroup || defaultBudgetId;
+    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     const rows = await repo.listParticipants(budgetId);
     return send(res, 200, rows);
   }) as any);
@@ -19,8 +23,12 @@ export function registerParticipants(router: Router): void {
     const email = String((req as any).user?.email || '').toLowerCase();
     const body = await readJson<{ name?: string; email?: string; income?: number }>(req);
     const repo = budgetRepo();
-    const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
-    let me = email ? await (repo as any).findParticipantByEmail?.(email) : null;
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
+    const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const budgetId = qGroup || defaultBudgetId;
+    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    let me = email ? ( (repo as any).findParticipantByEmailInBudget ? await (repo as any).findParticipantByEmailInBudget(budgetId, email) : await (repo as any).findParticipantByEmail?.(email) ) : null;
     if (!me) {
       // Create a participant for the user when not present
       const name = (email.split('@')[0] || 'You');
@@ -44,13 +52,17 @@ export function registerParticipants(router: Router): void {
     const userId = ((req as any).user?.id as string) || 'anon';
     const body = await readJson<Body>(req);
     const repo = budgetRepo();
-    const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
+    const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const budgetId = qGroup || defaultBudgetId;
+    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     const name = String((body.name || '').toString().trim()) || `Person`;
     const emailRaw = (body.email || '').toString().trim();
     const email = emailRaw ? emailRaw.toLowerCase() : null;
     const income = Math.max(0, Number(body.income) || 0);
     if (email) {
-      const existing = await (repo as any).findParticipantByEmail?.(email);
+      const existing = (repo as any).findParticipantByEmailInBudget ? await (repo as any).findParticipantByEmailInBudget(budgetId, email) : await (repo as any).findParticipantByEmail?.(email);
       if (existing) return send(res, 409, { error: 'Email already registered' });
     }
     const p = await repo.addParticipant(budgetId, name, income, email || undefined);
@@ -62,7 +74,11 @@ export function registerParticipants(router: Router): void {
     const userId = ((req as any).user?.id as string) || 'anon';
     const body = await readJson<{ name?: string; email?: string; income?: number }>(req);
     const repo = budgetRepo();
-    const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
+    const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const budgetId = qGroup || defaultBudgetId;
+    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     const updated = await repo.updateParticipant(budgetId, params.id, {
       ...(body.name != null ? { name: String(body.name).trim() } : {}),
       ...(body.email != null ? { email: String(body.email).trim().toLowerCase() } : {}),
@@ -81,7 +97,11 @@ export function registerParticipants(router: Router): void {
   router.add('DELETE', '/participants/:id', withAuth('admin', async (req, res, params) => {
     const userId = ((req as any).user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
+    const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const budgetId = qGroup || defaultBudgetId;
+    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     await repo.deleteParticipant(budgetId, params.id);
     try { await repo.logActivity(userId, budgetId, 'delete-participant', 'participant', params.id, {}); } catch {}
     return send(res, 204);

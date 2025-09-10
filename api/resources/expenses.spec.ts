@@ -5,6 +5,8 @@ process.env.NO_LISTEN = '1';
 import supertest from 'supertest';
 import { localRequest } from '../test-utils';
 
+delete process.env.AUTH_JWT_SECRET;
+
 describe('expenses resource', () => {
   const handler = createApp();
 

@@ -8,6 +8,8 @@ import { registerDocs } from './resources/docs';
 import { registerAuth } from './resources/auth';
 import { registerHealth } from './resources/health';
 import { registerGroup } from './resources/group';
+import { registerGroups } from './resources/groups';
+import { registerUser } from './resources/user';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 export function createApp(): (req: IncomingMessage, res: ServerResponse) => void | Promise<void> {
@@ -21,5 +23,7 @@ export function createApp(): (req: IncomingMessage, res: ServerResponse) => void
   registerHealth(router);
   registerAuth(router);
   registerGroup(router);
+  registerGroups(router);
+  registerUser(router);
   return router.handle.bind(router);
 }

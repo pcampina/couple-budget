@@ -37,15 +37,12 @@ export function registerStats(router: Router): void {
     const userId = ((req as any).user?.id as string) || 'anon';
     const userEmail = String((req as any).user?.email || '').toLowerCase();
     const repo = budgetRepo();
-    const budgetId = await repo.getOrCreateDefaultBudgetId(userId);
-    let participants = await repo.listParticipants(budgetId);
-    try {
-      if (userEmail && !participants.some(p => (p.email || '').toLowerCase() === userEmail)) {
-        const name = userEmail.split('@')[0] || 'You';
-        await repo.addParticipant(budgetId, name, 0, userEmail);
-        participants = await repo.listParticipants(budgetId);
-      }
-    } catch {}
+    const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
+    const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
+    const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
+    const budgetId = qGroup || defaultBudgetId;
+    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    const participants = await repo.listParticipants(budgetId);
     const expenses = await repo.listExpenses(budgetId);
     const totalIncome = participants.reduce((acc, p) => acc + (p.income || 0), 0);
     const participantShares = participants.map(p => ({
