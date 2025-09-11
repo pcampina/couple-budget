@@ -1,16 +1,16 @@
 # CoupleBudget API (TypeScript)
 
-HTTP API for participants, expenses, stats, activities and authentication.
+HTTP API for participants, transactions, stats, activities and authentication.
 
 ## Overview
-- Resources: `participants`, `expenses`, `stats`, `activities`, `auth`.
+- Resources: `participants`, `transactions`, `stats`, `activities`, `auth`.
 - Split logic: proportional to income.
 - Persistence: Postgres when `SUPABASE_DB_URL` is set; in-memory fallback otherwise.
 - CORS: enabled (`*`).
 - Auth: JWT HS256 (Bearer) — `AUTH_JWT_SECRET` is used to sign/verify tokens.
 
 Roles & permissions
-- `user`: can read and manage own expenses, list activities.
+- `user`: can read and manage own transactions, list activities.
 - `admin`: can manage participants (add/update/delete). GET endpoints require at least `user`.
 
 ## Run locally
@@ -43,18 +43,18 @@ docker compose up -d
 - `PATCH /participants/:id` — { name?, email?, income? }
 - `DELETE /participants/:id`
 
-## Expenses
+## Transactions
 - `GET /expenses` — supports pagination via `?page=1&limit=20`
   - Without pagination params returns a plain array
   - With params returns `{ items, total, page, pageSize }`
 - `POST /expenses` — { name, total }
   - Requires at least one participant to exist
-  - The expense is owned by the authenticated user
+  - The transaction is owned by the authenticated user
 - `PATCH /expenses/:id` — only owner can update
 - `DELETE /expenses/:id` — only owner can delete
 
 ## Stats
-- `GET /stats` — returns `{ participants, expenses, participantShares, expensesWithAllocations, totalIncome, totalExpenses, totalsPerParticipant }`
+- `GET /stats` — returns `{ participants, transactions, participantShares, transactionsWithAllocations, totalIncome, totalTransactions, totalsPerParticipant }`
 
 ## Activities
 - `GET /activities` — paginated: `{ items, total, page, pageSize }`
@@ -81,7 +81,7 @@ curl -sS -X POST http://localhost:3333/participants \
   -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"name":"Alice","email":"alice@example.com","income":1000}'
 
-# Create expense (user owns)
+# Create transaction (user owns)
 curl -sS -X POST http://localhost:3333/expenses \
   -H "authorization: Bearer $TOKEN" -H 'content-type: application/json' \
   -d '{"name":"Internet","total":50}'

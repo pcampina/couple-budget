@@ -28,10 +28,10 @@ describe('BudgetStore (signals, multi-participant)', () => {
 
   beforeEach(async () => {
     store = new BudgetStore();
-    // Initialize with two participants and one expense (since store now starts empty)
+    // Initialize with two participants and one transaction (since store now starts empty)
     await store.addParticipant('John', 2000);
     await store.addParticipant('Jane', 1600);
-    await store.addExpense('Rent', 1200);
+    await store.addTransaction('Rent', 1200);
   });
 
   it('calculates participant shares correctly', () => {
@@ -52,24 +52,24 @@ describe('BudgetStore (signals, multi-participant)', () => {
     expect(store.totalIncome()).toBe(2000);
   });
 
-  it('sums totals per participant equals total expenses', () => {
-    expect(store.totalExpenses()).toBe(1200);
+  it('sums totals per participant equals total transactions', () => {
+    expect(store.totalTransactions()).toBe(1200);
     const totals = store.totalsPerParticipant();
     const sum = Object.values(totals).reduce((a, b) => a + b, 0);
     expect(sum).toBeCloseTo(1200, 5);
   });
 
-  it('adds/edits/removes expense', async () => {
-    const before = store.expenses().length;
-    await store.addExpense('Internet', 40);
-    expect(store.expenses().length).toBe(before + 1);
+  it('adds/edits/removes transaction', async () => {
+    const before = store.transactions().length;
+    await store.addTransaction('Internet', 40);
+    expect(store.transactions().length).toBe(before + 1);
 
-    const id = store.expenses()[1].id;
-    await store.updateExpense(id, { total: 50 });
-    expect(store.expenses()[1].total).toBe(50);
+    const id = store.transactions()[1].id;
+    await store.updateTransaction(id, { total: 50 });
+    expect(store.transactions()[1].total).toBe(50);
 
-    await store.removeExpense(id);
-    expect(store.expenses().find(e => e.id === id)).toBeUndefined();
+    await store.removeTransaction(id);
+    expect(store.transactions().find(t => t.id === id)).toBeUndefined();
   });
 
   it('updates name and handles update when id not found', async () => {
@@ -77,9 +77,9 @@ describe('BudgetStore (signals, multi-participant)', () => {
     await store.setParticipantName(firstId, '  Alice  ');
     expect(store.participants()[0].name).toBe('Alice');
 
-    const beforeLen = store.expenses().length;
-    await store.updateExpense('nope', { total: 999 });
-    expect(store.expenses().length).toBe(beforeLen);
+    const beforeLen = store.transactions().length;
+    await store.updateTransaction('nope', { total: 999 });
+    expect(store.transactions().length).toBe(beforeLen);
   });
 
   it('adds/removes participant and keeps at least two', async () => {
@@ -98,7 +98,7 @@ describe('BudgetStore (signals, multi-participant)', () => {
   it('covers computed fields (no localStorage persistence)', () => {
     expect(store.totalIncome()).toBeGreaterThan(0);
     expect(store.participantShares().length).toBeGreaterThan(0);
-    expect(store.expensesWithAllocations().length).toBeGreaterThan(0);
-    expect(store.totalExpenses()).toBeGreaterThan(0);
+    expect(store.transactionsWithAllocations().length).toBeGreaterThan(0);
+    expect(store.totalTransactions()).toBeGreaterThan(0);
   });
 });

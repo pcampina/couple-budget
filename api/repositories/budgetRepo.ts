@@ -4,7 +4,7 @@ import type { Knex } from 'knex';
 import crypto from 'node:crypto';
 
 export interface DbParticipant { id: string; budget_id: string; user_id?: string | null; income: number; name?: string; email?: string | null }
-export interface DbExpense { id: string; budget_id: string; name: string; total: number; owner_user_id: string; type_code?: string; created_at?: string; paid?: boolean }
+export interface DbTransaction { id: string; budget_id: string; name: string; total: number; owner_user_id: string; type_code?: string; created_at?: string; paid?: boolean }
 export interface DbActivity { id: string; user_id: string; budget_id: string; action: string; entity_type: string; entity_id: string; payload: unknown; created_at: string }
 
 export interface BudgetRepo {
@@ -30,10 +30,10 @@ export interface BudgetRepo {
   addParticipant(budgetId: string, name: string, income: number, email?: string | null): Promise<DbParticipant>;
   updateParticipant(budgetId: string, id: string, patch: Partial<DbParticipant>): Promise<DbParticipant | null>;
   deleteParticipant?(budgetId: string, id: string): Promise<boolean>;
-  listExpenses(budgetId: string): Promise<DbExpense[]>;
-  addExpense(budgetId: string, ownerUserId: string, name: string, total: number, type_code?: string, paid?: boolean): Promise<DbExpense>;
-  updateExpense(budgetId: string, id: string, patch: Partial<DbExpense>, ownerUserId: string): Promise<DbExpense | null>;
-  deleteExpense(budgetId: string, id: string, ownerUserId: string): Promise<boolean>;
+  listTransactions(budgetId: string): Promise<DbTransaction[]>;
+  addTransaction(budgetId: string, ownerUserId: string, name: string, total: number, type_code?: string, paid?: boolean): Promise<DbTransaction>;
+  updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, ownerUserId: string): Promise<DbTransaction | null>;
+  deleteTransaction(budgetId: string, id: string, ownerUserId: string): Promise<boolean>;
   recordIncomeChange?(participantId: string, income: number, effective_from: string): Promise<void>;
   getParticipantsIncomeAt?(budgetId: string, atIso: string): Promise<DbParticipant[]>;
   logActivity(userId: string, budgetId: string, action: string, entityType: string, entityId: string, payload: unknown): Promise<DbActivity>;
@@ -48,7 +48,7 @@ function memory(): BudgetRepo {
   const state = {
     budgets: new Map<string, { id: string; owner_user_id: string; name: string }>(),
     participants: new Map<string, DbParticipant[]>(),
-    expenses: new Map<string, DbExpense[]>(),
+    transactions: new Map<string, DbTransaction[]>(),
     members: new Map<string, Set<string>>(), // key: budget_id -> user_ids
     invites: new Map<string, { id: string; budget_id: string; inviter_user_id: string; email: string; token: string; accepted_at: string | null; accepted_user_id: string | null; created_at: string }[]>(),
     incomeHistory: new Map<string, { income: number; effective_from: string }[]>(),
@@ -60,7 +60,7 @@ function memory(): BudgetRepo {
       b = { id: uuid(), owner_user_id: userId, name: 'Default' };
       state.budgets.set(b.id, b);
       if (!state.participants.has(b.id)) state.participants.set(b.id, []);
-      if (!state.expenses.has(b.id)) state.expenses.set(b.id, []);
+      if (!state.transactions.has(b.id)) state.transactions.set(b.id, []);
     }
     return b.id;
   }
@@ -71,7 +71,7 @@ function memory(): BudgetRepo {
       const b = { id, owner_user_id: userId, name: name || 'Group' };
       state.budgets.set(id, b);
       if (!state.participants.has(id)) state.participants.set(id, []);
-      if (!state.expenses.has(id)) state.expenses.set(id, []);
+      if (!state.transactions.has(id)) state.transactions.set(id, []);
       return b;
     },
     async listUserBudgets(userId: string) {
@@ -162,7 +162,7 @@ function memory(): BudgetRepo {
     async deleteBudget(budgetId: string) {
       state.budgets.delete(budgetId);
       state.participants.delete(budgetId);
-      state.expenses.delete(budgetId);
+      state.transactions.delete(budgetId);
       state.members.delete(budgetId);
       state.invites.delete(budgetId);
       return true;
@@ -178,21 +178,21 @@ function memory(): BudgetRepo {
       if (i < 0) return null; arr[i] = { ...arr[i], ...patch }; return arr[i];
     },
     async deleteParticipant(budgetId: string, id: string) { const arr = state.participants.get(budgetId) || []; const n = arr.length; state.participants.set(budgetId, arr.filter(p => p.id !== id)); return n !== (state.participants.get(budgetId) || []).length; },
-    async listExpenses(budgetId: string) { return state.expenses.get(budgetId) || []; },
-    async addExpense(budgetId: string, ownerUserId: string, name: string, total: number, type_code: string = 'expense', paid: boolean = false) {
-      const arr = state.expenses.get(budgetId) || []; state.expenses.set(budgetId, arr);
-      const e: DbExpense = { id: uuid(), budget_id: budgetId, name, total, owner_user_id: ownerUserId, type_code, created_at: new Date().toISOString(), paid: !!paid };
-      arr.push(e); return e;
+    async listTransactions(budgetId: string) { return state.transactions.get(budgetId) || []; },
+    async addTransaction(budgetId: string, ownerUserId: string, name: string, total: number, type_code: string = 'expense', paid: boolean = false) {
+      const arr = state.transactions.get(budgetId) || []; state.transactions.set(budgetId, arr);
+      const t: DbTransaction = { id: uuid(), budget_id: budgetId, name, total, owner_user_id: ownerUserId, type_code, created_at: new Date().toISOString(), paid: !!paid };
+      arr.push(t); return t;
     },
-    async updateExpense(budgetId: string, id: string, patch: Partial<DbExpense>, ownerUserId: string) {
-      const arr = state.expenses.get(budgetId) || []; const i = arr.findIndex(e => e.id === id && e.owner_user_id === ownerUserId);
+    async updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, ownerUserId: string) {
+      const arr = state.transactions.get(budgetId) || []; const i = arr.findIndex(t => t.id === id && t.owner_user_id === ownerUserId);
       if (i < 0) return null; arr[i] = { ...arr[i], ...patch }; return arr[i];
     },
-    async deleteExpense(budgetId: string, id: string, ownerUserId: string) {
-      const arr = state.expenses.get(budgetId) || [];
+    async deleteTransaction(budgetId: string, id: string, ownerUserId: string) {
+      const arr = state.transactions.get(budgetId) || [];
       const n = arr.length;
-      state.expenses.set(budgetId, arr.filter(e => !(e.id === id && e.owner_user_id === ownerUserId)));
-      return n !== (state.expenses.get(budgetId) || []).length;
+      state.transactions.set(budgetId, arr.filter(t => !(t.id === id && t.owner_user_id === ownerUserId)));
+      return n !== (state.transactions.get(budgetId) || []).length;
     },
     async recordIncomeChange(participantId: string, income: number, effective_from: string) {
       const list = state.incomeHistory.get(participantId) || [];
@@ -393,13 +393,13 @@ function sqlRepo(db: Knex): BudgetRepo {
       const n = await db('participants').where({ budget_id: budgetId, id }).del();
       return n > 0;
     },
-    async listExpenses(budgetId: string): Promise<DbExpense[]> {
+    async listTransactions(budgetId: string): Promise<DbTransaction[]> {
       const rows = await db('transactions')
         .select('id', 'budget_id', 'name', db.raw('CAST(total AS FLOAT) as total'), 'owner_user_id', 'type_code', 'created_at', 'paid')
         .where({ budget_id: budgetId });
-      return rows as DbExpense[];
+      return rows as DbTransaction[];
     },
-    async addExpense(budgetId: string, ownerUserId: string, name: string, total: number, type_code: string = 'expense', paid: boolean = false): Promise<DbExpense> {
+    async addTransaction(budgetId: string, ownerUserId: string, name: string, total: number, type_code: string = 'expense', paid: boolean = false): Promise<DbTransaction> {
       let typeCode = type_code;
       if (!/^[0-9a-fA-F-]{36}$/.test(typeCode)) {
         const t = await db('transaction_types').where({ name: 'Expense' }).first();
@@ -408,17 +408,17 @@ function sqlRepo(db: Knex): BudgetRepo {
       const [row] = await db('transactions')
         .insert({ budget_id: budgetId, name, total, owner_user_id: ownerUserId, type_code: typeCode, paid: !!paid })
         .returning(['id', 'budget_id', 'name', db.raw('CAST(total AS FLOAT) as total'), 'owner_user_id', 'type_code', 'created_at', 'paid']);
-      return row as DbExpense;
+      return row as DbTransaction;
     },
-    async updateExpense(budgetId: string, id: string, patch: Partial<DbExpense>, ownerUserId: string): Promise<DbExpense | null> {
+    async updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, ownerUserId: string): Promise<DbTransaction | null> {
       const [row] = await db('transactions')
         .where({ budget_id: budgetId, id, owner_user_id: ownerUserId })
         .update(patch)
         .returning(['id', 'budget_id', 'name', db.raw('CAST(total AS FLOAT) as total'), 'owner_user_id', 'type_code', 'created_at', 'paid']);
-      return (row as DbExpense) || null;
+      return (row as DbTransaction) || null;
     },
-    async deleteExpense(budgetId: string, id: string, ownerUserId: string): Promise<boolean> {
-      const n = await db('transactions').where({ budget_id: budgetId, id }).del();
+    async deleteTransaction(budgetId: string, id: string, ownerUserId: string): Promise<boolean> {
+      const n = await db('transactions').where({ budget_id: budgetId, id, owner_user_id: ownerUserId }).del();
       return n > 0;
     },
     async logActivity(userId: string, budgetId: string, action: string, entityType: string, entityId: string, payload: unknown) {

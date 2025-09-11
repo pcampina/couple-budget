@@ -11,16 +11,17 @@ import { ErrorService } from '../../../infrastructure/error.service';
 import { GroupService } from '@app/infrastructure/group.service';
 import { slugify } from '../../../shared/utils';
 import { GroupsHeaderComponent } from '../../groups/components/groups-header/groups-header.component';
-import { Expense } from '@app/domain/models';
+import { Transaction, TransactionType } from '@app/domain/models';
+import { TransactionTypeCode } from '@app/domain/enums';
 
 @Component({
-  selector: 'app-expenses-page',
+  selector: 'app-transactions-page',
   standalone: true,
   encapsulation: ViewEncapsulation.None,
   imports: [FormsModule, CurrencyPipe, DecimalPipe, GroupsHeaderComponent],
-  templateUrl: './expenses-page.component.html'
+  templateUrl: './transactions-page.component.html'
 })
-export class ExpensesPageComponent {
+export class TransactionsPageComponent {
   readonly store = inject(BudgetStore);
   readonly auth = inject(AuthService);
   readonly ui = inject(UiService);
@@ -30,37 +31,40 @@ export class ExpensesPageComponent {
   private readonly api = inject(ApiService);
 
   readonly usingApi = typeof window !== 'undefined' && (((window as any).__USE_API__ === true) || String((window as any).__USE_API__).toLowerCase() === 'true');
-  readonly canMutateExpenses = computed(() => !this.auth.isConfigured() || this.auth.isAuthenticated());
+  readonly canMutateTransactions = computed(() => !this.auth.isConfigured() || this.auth.isAuthenticated());
 
   newName = '';
   newTotal: number | null = null;
-  newType: string = '';
+  newType: TransactionTypeCode = TransactionTypeCode.Expense;
 
-  types = signal<{ code: string; name: string }[]>([]);
+  types = signal<TransactionType[]>([]);
   readonly typeMap = computed(() => {
     const map: Record<string, string> = {};
     for (const t of this.types()) map[t.code] = t.name;
     return map;
   });
 
-  private draftExpenses = signal<Map<string, Partial<Expense>>>(new Map());
+  private draftTransactions = signal<Map<string, Partial<Transaction>>>(new Map());
 
   constructor() {
     // Load transaction types
     if (this.usingApi) {
-      this.api.listTransactionTypes().then(list => { this.types.set(list); this.newType = list.find(t => /expense/i.test(t.name))?.code || list[0]?.code || ''; }).catch(() => this.types.set([
-        { code: 'expense', name: 'Expense' },
-        { code: 'income', name: 'Income' },
-        { code: 'transfer', name: 'Transfer' },
+      this.api.listTransactionTypes().then(list => {
+        this.types.set(list);
+        this.newType = list.find(t => /expense/i.test(t.name))?.code as TransactionTypeCode || list[0]?.code as TransactionTypeCode || TransactionTypeCode.Expense;
+      }).catch(() => this.types.set([
+        { code: TransactionTypeCode.Expense, name: 'Expense' },
+        { code: TransactionTypeCode.Income, name: 'Income' },
+        { code: TransactionTypeCode.Transfer, name: 'Transfer' },
       ]));
     } else {
-      const defaults = [
-        { code: 'expense', name: 'Expense' },
-        { code: 'income', name: 'Income' },
-        { code: 'transfer', name: 'Transfer' },
+      const defaults: TransactionType[] = [
+        { code: TransactionTypeCode.Expense, name: 'Expense' },
+        { code: TransactionTypeCode.Income, name: 'Income' },
+        { code: TransactionTypeCode.Transfer, name: 'Transfer' },
       ];
       this.types.set(defaults);
-      this.newType = defaults[0].code;
+      this.newType = defaults[0].code as TransactionTypeCode;
     }
     // Watch route param :groupId to scope the store
     try {
@@ -81,20 +85,25 @@ export class ExpensesPageComponent {
     } catch {}
   }
 
-  isValid(v: any) {
-    // Garante que o valor do input seja convertido para número antes de validar
-    const num = typeof v === 'number' ? v : (v === '' ? NaN : parseFloat(v));
+  isValid(v: string | number | null): boolean {
+    if (v === null || v === '') return false;
+    const num = typeof v === 'number' ? v : parseFloat(v);
     return isFinite(num) && num >= 0;
   }
-  toNumber(value: any): number { return typeof value === 'number' ? value : parseFloat(value) || 0; }
+  toNumber(value: string | number | null): number {
+    if (value === null || value === '') return 0;
+    return typeof value === 'number' ? value : parseFloat(value) || 0;
+  }
 
-  txTypeLabel(e: { type?: string; type_code?: string }): string {
-    const codeOrName = String((e?.type_code ?? e?.type ?? '') || '');
+  txTypeLabel(transaction: Transaction): string {
+    const codeOrName = transaction.type_code;
+    if (!codeOrName) return 'Expense';
+
     const name = this.typeMap()[codeOrName];
     if (name) return name;
-    // If it doesn't look like a UUID, treat it as a human label
+    
     if (codeOrName && !/^[0-9a-fA-F-]{36}$/.test(codeOrName)) return codeOrName.charAt(0).toUpperCase() + codeOrName.slice(1);
-    // Fallback to the first known type name or 'Expense'
+    
     return this.types()[0]?.name || 'Expense';
   }
 
@@ -104,8 +113,8 @@ export class ExpensesPageComponent {
   }
 
   // dirty helpers
-  onExpenseInput<K extends keyof Expense>(id: string, field: K, value: Expense[K]) {
-    this.draftExpenses.update(drafts => {
+  onTransactionInput<K extends keyof Transaction>(id: string, field: K, value: Transaction[K]) {
+    this.draftTransactions.update(drafts => {
       const newDrafts = new Map(drafts);
       const draft = newDrafts.get(id) || {};
       draft[field] = value;
@@ -114,31 +123,31 @@ export class ExpensesPageComponent {
     });
   }
 
-  getDraftValue<K extends keyof Expense>(id: string, field: K, currentValue: Expense[K]): Expense[K] {
-    return this.draftExpenses().get(id)?.[field] ?? currentValue;
+  getDraftValue<K extends keyof Transaction>(id: string, field: K, currentValue: Transaction[K]): Transaction[K] {
+    return this.draftTransactions().get(id)?.[field] ?? currentValue;
   }
 
-  isExpenseDirty(id: string): boolean {
-    return this.draftExpenses().has(id);
+  isTransactionDirty(id: string): boolean {
+    return this.draftTransactions().has(id);
   }
 
-  async saveExpense(id: string) {
-    const patch = this.draftExpenses().get(id);
+  async saveTransaction(id: string) {
+    const patch = this.draftTransactions().get(id);
     if (!patch) {
       this.notify.info('No changes to save');
       return;
     }
     this.ui.showLoading();
     try {
-      await this.store.updateExpense(id, patch);
-      this.notify.success('Expense saved');
-      this.draftExpenses.update(drafts => {
+      await this.store.updateTransaction(id, patch);
+      this.notify.success('Transaction saved');
+      this.draftTransactions.update(drafts => {
         const newDrafts = new Map(drafts);
         newDrafts.delete(id);
         return newDrafts;
       });
     }
-    catch (e) { this.errors.handle(e, { userMessage: 'Failed to save expense', showToast: true, context: 'saveExpense' }); }
+    catch (e) { this.errors.handle(e, { userMessage: 'Failed to save transaction', showToast: true, context: 'saveTransaction' }); }
     finally { this.ui.hideLoading(); }
   }
 
@@ -146,22 +155,22 @@ export class ExpensesPageComponent {
     if (!this.newName || !this.isValid(this.newTotal)) return;
     this.ui.showLoading();
     try {
-      await this.store.addExpense(this.newName, this.newTotal!, this.newType);
-      this.notify.success('Expense added');
-    } catch (e) { this.errors.handle(e, { userMessage: 'Failed to add expense', showToast: true, context: 'addExpense' }); }
+      await this.store.addTransaction(this.newName, this.newTotal!, this.newType);
+      this.notify.success('Transaction added');
+    } catch (e) { this.errors.handle(e, { userMessage: 'Failed to add transaction', showToast: true, context: 'addTransaction' }); }
     finally { this.ui.hideLoading(); this.newName = ''; this.newTotal = null; }
   }
 
-  async removeExpenseAction(id: string) {
+  async removeTransactionAction(id: string) {
     this.ui.showLoading();
-    try { await this.store.removeExpense(id); this.notify.success('Expense removed'); }
-    catch (e) { this.errors.handle(e, { userMessage: 'Failed to remove expense', showToast: true, context: 'removeExpense' }); }
+    try { await this.store.removeTransaction(id); this.notify.success('Transaction removed'); }
+    catch (e) { this.errors.handle(e, { userMessage: 'Failed to remove transaction', showToast: true, context: 'removeTransaction' }); }
     finally { this.ui.hideLoading(); }
   }
 
   async togglePaid(id: string, paid: boolean) {
     this.ui.showLoading();
-    try { await this.store.updateExpense(id, { paid }); this.notify.success('Updated'); }
+    try { await this.store.updateTransaction(id, { paid }); this.notify.success('Updated'); }
     catch (e) { this.errors.handle(e, { userMessage: 'Failed to update', showToast: true, context: 'togglePaid' }); }
     finally { this.ui.hideLoading(); }
   }

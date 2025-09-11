@@ -28,7 +28,7 @@ vi.mock('@app/features/login/components/login.component', () => ({ LoginComponen
 vi.mock('@app/app.component', () => ({ AppComponent: class {} }));
 vi.mock('@app/shared/components/layout.component', () => ({ LayoutComponent: class {} }));
 vi.mock('@app/features/settings/components/config-page.component', () => ({ ConfigPageComponent: class {} }));
-vi.mock('@app/features/transactions/components/expenses-page.component', () => ({ ExpensesPageComponent: class {} }));
+vi.mock('@app/features/transactions/components/transactions-page.component', () => ({ TransactionsPageComponent: class {} }));
 vi.mock('@app/features/transactions/components/groups-list.component', () => ({ GroupsListComponent: class {} }));
 
 vi.mock('@app/features/groups/components/group-page.component', () => ({ GroupPageComponent: class {} }));

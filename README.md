@@ -12,7 +12,7 @@ This project was generated using [Angular CLI](https://github.com/angular/angula
 
 ## Overview
 
-- Multi-participant budgeting: expenses are split proportionally by each participant's income.
+- Multi-participant budgeting: transactions are split proportionally by each participant's income.
 - Participants are dynamic: starts with two, you can add/remove more (guard keeps at least two).
 - Persistence via API: when API mode is enabled, data persists in Postgres; otherwise, the UI keeps data in-memory for the session.
 - API docs: `api/README.md`
@@ -109,7 +109,7 @@ Environment: jsdom; path aliases mirror `tsconfig.json`.
 
 ### API Server
 
-This repository now includes a minimal Node HTTP API that exposes the core budgeting features (participants, expenses, allocations) with no external dependencies.
+This repository now includes a minimal Node HTTP API that exposes the core budgeting features (participants, transactions, allocations) with no external dependencies.
 
 - Full API docs: `api/README.md`
 
@@ -123,8 +123,8 @@ It starts on `http://localhost:3333` with CORS enabled. Highlights:
 
 - Auth: `POST /auth/register`, `POST /auth/login` → JWT, `GET /auth/verify`
 - Participants: `GET /participants`, `POST /participants` (name, email?, income), `PATCH`, `DELETE`
-- Expenses: `GET /expenses?page=&limit=` (paginated); `POST` (requires 1 participant; owned by user), `PATCH`/`DELETE` (owner only)
-- Stats: `GET /stats` — snapshot with `participants`, `expenses`, `participantShares`, `expensesWithAllocations`, `totalIncome`, `totalExpenses`, `totalsPerParticipant`
+- Transactions: `GET /expenses?page=&limit=` (paginated); `POST` (requires 1 participant; owned by user), `PATCH`/`DELETE` (owner only)
+- Stats: `GET /stats` — snapshot with `participants`, `transactions`, `participantShares`, `transactionsWithAllocations`, `totalIncome`, `totalTransactions`, `totalsPerParticipant`
 - Activities: `GET /activities?page=&limit=` — user activity log (paginated)
 
 Persistence:
@@ -134,7 +134,7 @@ Persistence:
 #### Authentication
 
 - Backend: set `AUTH_JWT_SECRET` (HS256) in `.env`.
-- Roles: GET endpoints require `user`. Mutations for participants require `admin`; expenses require `user` (owner only).
+- Roles: GET endpoints require `user`. Mutations for participants require `admin`; transactions require `user` (owner only).
 
 ### Frontend Integration
 
@@ -199,7 +199,7 @@ For more information on using the Angular CLI, including detailed command refere
 ## Domain model
 
 - `Participant`: `{ id, name, email?, income }`
-- `Expense`: `{ id, name, total }`
+- `Transaction`: `{ id, name, total }`
 - Split logic: `splitByIncome(total, participants[]) -> Record<participantId, amount>`
 
 ## Persistence
@@ -210,4 +210,4 @@ For more information on using the Angular CLI, including detailed command refere
 ## UI behavior
 
 - Configuration: edit participant names and incomes; add/remove participants.
-- Expenses table: dynamically renders a column per participant, with totals per participant in the footer.
+- Transactions table: dynamically renders a column per participant, with totals per participant in the footer.

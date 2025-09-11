@@ -1,6 +1,6 @@
 import { Router } from './router';
 import { registerParticipants } from './resources/participants';
-import { registerExpenses } from './resources/expenses';
+import { registerTransactions } from './resources/transactions';
 import { registerTransactionTypes } from './resources/transactionTypes';
 import { registerStats } from './resources/stats';
 import { registerActivities } from './resources/activities';
@@ -15,7 +15,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 export function createApp(): (req: IncomingMessage, res: ServerResponse) => void | Promise<void> {
   const router = new Router();
   registerParticipants(router);
-  registerExpenses(router);
+  registerTransactions(router);
   registerTransactionTypes(router);
   registerStats(router);
   registerActivities(router);

@@ -3,7 +3,7 @@ export const openapi = {
   info: {
     title: 'CoupleBudget API',
     version: '1.0.0',
-    description: 'API for participants, expenses, statistics, activities, and auth. Auth via Bearer JWT (HS256).',
+    description: 'API for participants, transactions, statistics, activities, and auth. Auth via Bearer JWT (HS256).',
   },
   servers: [
     { url: 'http://localhost:3333' }
@@ -23,7 +23,7 @@ export const openapi = {
         },
         required: ['id','name','income']
       },
-      Expense: {
+      Transaction: {
         type: 'object',
         properties: {
           id: { type: 'string', format: 'uuid' },
@@ -49,18 +49,18 @@ export const openapi = {
         type: 'object',
         properties: {
           participants: { type: 'array', items: { $ref: '#/components/schemas/Participant' } },
-          expenses: { type: 'array', items: { $ref: '#/components/schemas/Expense' } },
+          transactions: { type: 'array', items: { $ref: '#/components/schemas/Transaction' } },
           participantShares: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, share: { type: 'number' } } } },
-          expensesWithAllocations: { type: 'array', items: { allOf: [ { $ref: '#/components/schemas/Expense' }, { type: 'object', properties: { allocations: { type: 'object', additionalProperties: { type: 'number' } } } } ] } },
+          transactionsWithAllocations: { type: 'array', items: { allOf: [ { $ref: '#/components/schemas/Transaction' }, { type: 'object', properties: { allocations: { type: 'object', additionalProperties: { type: 'number' } } } } ] } },
           totalIncome: { type: 'number' },
-          totalExpenses: { type: 'number' },
+          totalTransactions: { type: 'number' },
           totalsPerParticipant: { type: 'object', additionalProperties: { type: 'number' } }
         }
       },
-      PagedExpense: {
+      PagedTransaction: {
         type: 'object',
         properties: {
-          items: { type: 'array', items: { $ref: '#/components/schemas/Expense' } },
+          items: { type: 'array', items: { $ref: '#/components/schemas/Transaction' } },
           total: { type: 'integer' },
           page: { type: 'integer' },
           pageSize: { type: 'integer' }
@@ -140,7 +140,7 @@ export const openapi = {
     },
     '/expenses': {
       get: {
-        summary: 'List expenses',
+        summary: 'List transactions',
         security: [{ bearerAuth: [] }],
         parameters: [
           { name: 'group', in: 'query', required: false, schema: { type: 'string', format: 'uuid' } },
@@ -154,8 +154,8 @@ export const openapi = {
               'application/json': {
                 schema: {
                   oneOf: [
-                    { type: 'array', items: { $ref: '#/components/schemas/Expense' } },
-                    { $ref: '#/components/schemas/PagedExpense' }
+                    { type: 'array', items: { $ref: '#/components/schemas/Transaction' } },
+                    { $ref: '#/components/schemas/PagedTransaction' }
                   ]
                 }
               }
@@ -164,23 +164,23 @@ export const openapi = {
         }
       },
       post: {
-        summary: 'Create expense',
+        summary: 'Create transaction',
         security: [{ bearerAuth: [] }],
         parameters: [ { name: 'group', in: 'query', required: false, schema: { type: 'string', format: 'uuid' } } ],
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' }, total: { type: 'number' }, paid: { type: 'boolean' }, type: { type: 'string' } }, required: ['name','total'] } } } },
-        responses: { '201': { description: 'Created', content: { 'application/json': { schema: { $ref: '#/components/schemas/Expense' } } } } }
+        responses: { '201': { description: 'Created', content: { 'application/json': { schema: { $ref: '#/components/schemas/Transaction' } } } } }
       }
     },
     '/expenses/{id}': {
       patch: {
-        summary: 'Update expense',
+        summary: 'Update transaction',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'group', in: 'query', required: false, schema: { type: 'string', format: 'uuid' } }],
         requestBody: { required: true, content: { 'application/json': { schema: { type: 'object', properties: { name: { type: 'string' }, total: { type: 'number' }, paid: { type: 'boolean' }, type: { type: 'string' } } } } } },
-        responses: { '200': { description: 'OK', content: { 'application/json': { schema: { $ref: '#/components/schemas/Expense' } } } }, '404': { description: 'Not found' } }
+        responses: { '200': { description: 'OK', content: { 'application/json': { schema: { $ref: '#/components/schemas/Transaction' } } } }, '404': { description: 'Not found' } }
       },
       delete: {
-        summary: 'Delete expense',
+        summary: 'Delete transaction',
         security: [{ bearerAuth: [] }],
         parameters: [{ name: 'id', in: 'path', required: true, schema: { type: 'string' } }, { name: 'group', in: 'query', required: false, schema: { type: 'string', format: 'uuid' } }],
         responses: { '204': { description: 'No Content' } }

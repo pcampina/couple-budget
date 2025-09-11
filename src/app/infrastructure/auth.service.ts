@@ -17,13 +17,6 @@ export class AuthService {
   private storageKey = 'auth/token';
   private _token = signal<string | null>(null);
 
-  constructor(private api: ApiService, private budgetStore: BudgetStore) {
-    try {
-      const t = typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
-      this._token.set(t);
-    } catch {}
-  }
-
   private decode(token: string | null): JwtPayload | null {
     try {
       if (!token) return null;
@@ -55,13 +48,26 @@ export class AuthService {
     const now = Math.floor(Date.now() / 1000);
     return !u.exp || u.exp > now;
   });
-  readonly role = computed<'admin' | 'user' | 'anonymous'>(() => {
+    readonly role = computed<'admin' | 'user' | 'anonymous'>(() => {
     const u = this.user(); if (!u) return 'anonymous';
     const roles = u.app_metadata?.roles || [];
     if (roles.includes('admin')) return 'admin';
     if (roles.includes('user')) return 'user';
     return 'user';
   });
+
+  readonly isAdmin = computed(() => this.role() === 'admin');
+
+  constructor(private api: ApiService, private budgetStore: BudgetStore) {
+      this.load();
+  }
+
+  load() {
+    try {
+      const t = typeof localStorage !== 'undefined' ? localStorage.getItem(this.storageKey) : null;
+      this._token.set(t);
+    } catch {}
+  }
 
   async signIn(email: string, password: string) {
     const { access_token } = await this.api.login(email, password);

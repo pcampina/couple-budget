@@ -1,201 +1,182 @@
-import { Component, ViewEncapsulation, inject, signal, computed } from '@angular/core';
-import { CurrencyPipe, DecimalPipe } from '@angular/common';
-import { FormsModule } from '@angular/forms';
+import { Component, computed, inject } from '@angular/core';
 import { BudgetStore } from './application/budget.store';
+import { Participant } from './domain/models';
 import { AuthService } from './infrastructure/auth.service';
-import { UiService } from './infrastructure/ui.service';
 import { NotificationService } from './infrastructure/notification.service';
+import { UiService } from './infrastructure/ui.service';
 
 @Component({
-  selector: 'app-main',
-  imports: [FormsModule],
-  encapsulation: ViewEncapsulation.None,
+  selector: 'app-root',
   templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss']
+  styleUrls: ['./app.component.scss'],
 })
 export class AppComponent {
   readonly store = inject(BudgetStore);
   readonly auth = inject(AuthService);
   readonly ui = inject(UiService);
-  readonly notify = inject(NotificationService);
-  readonly usingApi = typeof window !== 'undefined' && (((window as any).__USE_API__ === true) || String((window as any).__USE_API__).toLowerCase() === 'true');
-  readonly isAdmin = computed(() => this.auth.role() === 'admin');
-  // Mutations for participants guarded by admin; expenses by authenticated user
-  readonly canMutate = computed(() => !this.auth.isConfigured() || this.isAdmin());
-  readonly canMutateExpenses = computed(() => !this.auth.isConfigured() || this.auth.isAuthenticated());
+  private readonly notify = inject(NotificationService);
+
+  readonly participantCount = this.store.participantCount;
+  readonly totalIncome = this.store.totalIncome;
+  readonly totalTransactions = this.store.totalTransactions;
+  readonly participants = this.store.participants;
+  readonly transactionsWithAllocations = this.store.transactionsWithAllocations;
+  readonly totalsPerParticipant = this.store.totalsPerParticipant;
+  readonly participantShares = this.store.participantShares;
+
+  // Is user authenticated and allowed to mutate?
+  // Mutations for participants guarded by admin; transactions by authenticated user
+  readonly isConfigured = computed(() => this.auth.isConfigured());
+  readonly canMutateTransactions = computed(() => !this.auth.isConfigured() || this.auth.isAuthenticated());
+  readonly canMutateParticipants = computed(() => !this.auth.isConfigured() || this.auth.isAdmin());
 
   newName = '';
   newTotal: number | null = null;
-  email = '';
-  password = '';
+  newParticipantName = '';
+  newParticipantIncome: number | null = null;
 
-  // theme: 'light' | 'dark'
-  theme = signal<'light' | 'dark'>('light');
+  private pendingTransactionNames = new Map<string, string>();
+  private pendingTransactionTotals = new Map<string, number>();
+  private pendingParticipantNames = new Map<string, string>();
+  private pendingParticipantIncomes = new Map<string, number>();
 
-  // Pending edits for explicit save and dirty UI
-  private pendingNames = new Map<string, string>();
-  private pendingIncomes = new Map<string, number>();
-  private pendingExpenseNames = new Map<string, string>();
-  private pendingExpenseTotals = new Map<string, number>();
-
-  nameValue(p: { id: string; name: string }) { return this.pendingNames.get(p.id) ?? p.name; }
-  onNameInput(id: string, v: any) { this.pendingNames.set(id, String(v)); }
-  isNameDirty(p: { id: string; name: string }) { return this.pendingNames.has(p.id) && this.pendingNames.get(p.id) !== p.name; }
-  async saveName(id: string) { await this.onNameCommit(id, this.pendingNames.get(id)); this.pendingNames.delete(id); }
-
-  incomeValue(p: { id: string; income: number }) { return this.pendingIncomes.get(p.id) ?? p.income; }
-  onIncomeInput(id: string, v: any) { this.pendingIncomes.set(id, this.toNumber(v)); }
-  isIncomeDirty(p: { id: string; income: number }) { return this.pendingIncomes.has(p.id) && this.pendingIncomes.get(p.id) !== p.income; }
-  async saveIncome(id: string) { await this.onIncomeCommit(id, this.pendingIncomes.get(id)); this.pendingIncomes.delete(id); }
-
-  expenseNameValue(id: string, current: string) { return this.pendingExpenseNames.get(id) ?? current; }
-  onExpenseNameInput(id: string, v: any) { this.pendingExpenseNames.set(id, String(v)); }
-  expenseTotalValue(id: string, current: number) { return this.pendingExpenseTotals.get(id) ?? current; }
-  onExpenseTotalInput(id: string, v: any) { this.pendingExpenseTotals.set(id, this.toNumber(v)); }
-  isExpenseDirty(id: string, currentName: string, currentTotal: number) {
-    const nameDirty = this.pendingExpenseNames.has(id) && this.pendingExpenseNames.get(id) !== currentName;
-    const totalDirty = this.pendingExpenseTotals.has(id) && this.pendingExpenseTotals.get(id) !== currentTotal;
-    return nameDirty || totalDirty;
-  }
-  async saveExpense(id: string, currentName: string, currentTotal: number) {
-    const patch: any = {};
-    if (this.pendingExpenseNames.has(id) && this.pendingExpenseNames.get(id) !== currentName) patch.name = this.pendingExpenseNames.get(id);
-    if (this.pendingExpenseTotals.has(id) && this.pendingExpenseTotals.get(id) !== currentTotal) patch.total = this.pendingExpenseTotals.get(id);
-    if (Object.keys(patch).length === 0) { this.notify.info('No changes to save'); return; }
-    this.ui.showLoading();
-    try { await this.store.updateExpense(id, patch); this.notify.success('Expense saved'); }
-    catch { this.notify.error('Failed to save expense'); }
-    finally { this.ui.hideLoading(); this.pendingExpenseNames.delete(id); this.pendingExpenseTotals.delete(id); }
+  constructor() {
+    this.auth.load();
   }
 
-  isValid(v: any) { return typeof v === 'number' && isFinite(v) && v >= 0; }
-
-  toNumber(value: any): number {
+  isValid(v: string | number | null): boolean {
+    if (v === null) return false;
+    const num = typeof v === 'number' ? v : parseFloat(v);
+    return isFinite(num) && num >= 0;
+  }
+  toNumber(value: string | number | null): number {
+    if (value === null) return 0;
     return typeof value === 'number' ? value : parseFloat(value) || 0;
   }
 
-  addFromForm() {
+  transactionNameValue(id: string, current: string) { return this.pendingTransactionNames.get(id) ?? current; }
+  onTransactionNameInput(id: string, v: EventTarget | null) { this.pendingTransactionNames.set(id, String((v as HTMLInputElement).value)); }
+  transactionTotalValue(id: string, current: number) { return this.pendingTransactionTotals.get(id) ?? current; }
+  onTransactionTotalInput(id: string, v: EventTarget | null) { this.pendingTransactionTotals.set(id, this.toNumber((v as HTMLInputElement).value)); }
+  isTransactionDirty(id: string, currentName: string, currentTotal: number) {
+    const nameDirty = this.pendingTransactionNames.has(id) && this.pendingTransactionNames.get(id) !== currentName;
+    const totalDirty = this.pendingTransactionTotals.has(id) && this.pendingTransactionTotals.get(id) !== currentTotal;
+    return nameDirty || totalDirty;
+  }
+  async saveTransaction(id: string, currentName: string, currentTotal: number) {
+    const patch: { name?: string; total?: number } = {};
+    if (this.pendingTransactionNames.has(id) && this.pendingTransactionNames.get(id) !== currentName) patch.name = this.pendingTransactionNames.get(id);
+    if (this.pendingTransactionTotals.has(id) && this.pendingTransactionTotals.get(id) !== currentTotal) patch.total = this.pendingTransactionTotals.get(id);
+    if (Object.keys(patch).length === 0) return;
+    this.ui.showLoading();
+    try { await this.store.updateTransaction(id, patch); this.notify.success('Transaction saved'); }
+    catch { this.notify.error('Failed to save transaction'); }
+    finally { this.ui.hideLoading(); this.pendingTransactionNames.delete(id); this.pendingTransactionTotals.delete(id); }
+  }
+
+  participantNameValue(id: string, current: string) { return this.pendingParticipantNames.get(id) ?? current; }
+  onParticipantNameInput(id: string, v: EventTarget | null) { this.pendingParticipantNames.set(id, String((v as HTMLInputElement).value)); }
+  participantIncomeValue(id: string, current: number) { return this.pendingParticipantIncomes.get(id) ?? current; }
+  onParticipantIncomeInput(id: string, v: EventTarget | null) { this.pendingParticipantIncomes.set(id, this.toNumber((v as HTMLInputElement).value)); }
+  isParticipantDirty(id: string, currentName: string, currentIncome: number) {
+    const nameDirty = this.pendingParticipantNames.has(id) && this.pendingParticipantNames.get(id) !== currentName;
+    const incomeDirty = this.pendingParticipantIncomes.has(id) && this.pendingParticipantIncomes.get(id) !== currentIncome;
+    return nameDirty || incomeDirty;
+  }
+  async saveParticipant(p: Participant) {
+    const patch: { name?: string; income?: number } = {};
+    if (this.pendingParticipantNames.has(p.id) && this.pendingParticipantNames.get(p.id) !== p.name) patch.name = this.pendingParticipantNames.get(p.id);
+    if (this.pendingParticipantIncomes.has(p.id) && this.pendingParticipantIncomes.get(p.id) !== p.income) patch.income = this.pendingParticipantIncomes.get(p.id);
+    if (Object.keys(patch).length === 0) return;
+    this.ui.showLoading();
+    try {
+      if (patch.name) await this.store.setParticipantName(p.id, patch.name);
+      if (patch.income) await this.store.setParticipantIncome(p.id, patch.income);
+      this.notify.success('Participant saved');
+    }
+    catch { this.notify.error('Failed to save participant'); }
+    finally { this.ui.hideLoading(); this.pendingParticipantNames.delete(p.id); this.pendingParticipantIncomes.delete(p.id); }
+  }
+
+  async addFromForm() {
     if (!this.newName || !this.isValid(this.newTotal)) return;
-    this.store.addExpense(this.newName, this.newTotal!);
-    this.newName = '';
-    this.newTotal = null;
-  }
-
-  gridTemplateColumns(): string {
-    const participantCols = Array(this.store.participants().length).fill('1.2fr').join(' ');
-    return `2fr 1.2fr ${participantCols} 88px`;
-  }
-
-  constructor() {
-    // initialize theme (default: light)
+    this.ui.showLoading();
     try {
-      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('theme') as 'light' | 'dark' | null : null;
-      const initial = saved === 'dark' || saved === 'light' ? saved : 'light';
-      this.setTheme(initial);
-    } catch {
-      this.setTheme('light');
+      await this.store.addTransaction(this.newName, this.newTotal!);
+      this.notify.success('Transaction added');
+    } catch (e) {
+      this.notify.error((e as Error).message || 'Failed to add transaction');
     }
+    finally { this.ui.hideLoading(); this.newName = ''; this.newTotal = null; }
   }
 
-  toggleTheme() {
-    const next = this.theme() === 'dark' ? 'light' : 'dark';
-    this.setTheme(next);
-  }
-
-  private setTheme(t: 'light' | 'dark') {
-    this.theme.set(t);
+  async addParticipantFromForm() {
+    if (!this.newParticipantName || !this.isValid(this.newParticipantIncome)) return;
+    this.ui.showLoading();
     try {
-      if (typeof document !== 'undefined') {
-        document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
-      }
-      if (typeof localStorage !== 'undefined') localStorage.setItem('theme', t);
-    } catch {}
+      await this.store.addParticipant(this.newParticipantName, this.newParticipantIncome!);
+      this.notify.success('Participant added');
+    } catch (e) {
+      this.notify.error((e as Error).message || 'Failed to add participant');
+    }
+    finally { this.ui.hideLoading(); this.newParticipantName = ''; this.newParticipantIncome = null; }
   }
 
-  async onNameCommit(id: string, value: any) {
-    if (this.usingApi && !this.canMutate()) return;
+  async onTransactionNameCommit(id: string, value: EventTarget | null) {
+    if (!this.canMutateTransactions()) return;
+    const current = this.store.transactions().find(t => t.id === id)?.name ?? '';
+    if (current === String((value as HTMLInputElement).value)) return;
+    this.ui.showLoading();
+    try { await this.store.updateTransaction(id, { name: String((value as HTMLInputElement).value) }); this.notify.success('Transaction updated'); }
+    catch { this.notify.error('Failed to update transaction'); }
+    finally { this.ui.hideLoading(); }
+  }
+
+  async onTransactionTotalCommit(id: string, value: EventTarget | null) {
+    if (!this.canMutateTransactions()) return;
+    const current = this.store.transactions().find(t => t.id === id)?.total ?? 0;
+    const next = this.toNumber((value as HTMLInputElement).value);
+    if (current === next) return;
+    this.ui.showLoading();
+    try { await this.store.updateTransaction(id, { total: next }); this.notify.success('Transaction updated'); }
+    catch { this.notify.error('Failed to update transaction'); }
+    finally { this.ui.hideLoading(); }
+  }
+
+  async onParticipantNameCommit(id: string, value: EventTarget | null) {
+    if (!this.canMutateParticipants()) return;
     const current = this.store.participants().find(p => p.id === id)?.name ?? '';
-    if (String(value ?? '').trim() === current) { this.notify.info('No changes to save'); return; }
+    if (current === String((value as HTMLInputElement).value)) return;
     this.ui.showLoading();
-    try { await this.store.setParticipantName(id, String(value)); this.notify.success('Name updated'); }
-    catch { this.notify.error('Failed to update name'); }
+    try { await this.store.setParticipantName(id, String((value as HTMLInputElement).value)); this.notify.success('Participant updated'); }
+    catch { this.notify.error('Failed to update participant'); }
     finally { this.ui.hideLoading(); }
   }
 
-  async onIncomeCommit(id: string, value: any) {
-    if (this.usingApi && !this.canMutate()) return;
+  async onParticipantIncomeCommit(id: string, value: EventTarget | null) {
+    if (!this.canMutateParticipants()) return;
     const current = this.store.participants().find(p => p.id === id)?.income ?? 0;
-    const next = this.toNumber(value);
-    if (next === current) { this.notify.info('No changes to save'); return; }
+    const next = this.toNumber((value as HTMLInputElement).value);
+    if (current === next) return;
     this.ui.showLoading();
-    try { await this.store.setParticipantIncome(id, next); this.notify.success('Income updated'); }
-    catch { this.notify.error('Failed to update income'); }
+    try { await this.store.setParticipantIncome(id, next); this.notify.success('Participant updated'); }
+    catch { this.notify.error('Failed to update participant'); }
     finally { this.ui.hideLoading(); }
   }
 
-  async onExpenseNameCommit(id: string, value: any) {
-    if (this.usingApi && !this.canMutate()) return;
-    const current = this.store.expenses().find(e => e.id === id)?.name ?? '';
-    if (String(value ?? '').trim() === current) { this.notify.info('No changes to save'); return; }
+  async removeTransactionAction(id: string) {
+    if (!this.canMutateTransactions()) return;
     this.ui.showLoading();
-    try { await this.store.updateExpense(id, { name: String(value) }); this.notify.success('Expense updated'); }
-    catch { this.notify.error('Failed to update expense'); }
+    try { await this.store.removeTransaction(id); this.notify.success('Transaction removed'); }
+    catch { this.notify.error('Failed to remove transaction'); }
     finally { this.ui.hideLoading(); }
   }
 
-  async onExpenseTotalCommit(id: string, value: any) {
-    if (this.usingApi && !this.canMutate()) return;
-    const current = this.store.expenses().find(e => e.id === id)?.total ?? 0;
-    const next = this.toNumber(value);
-    if (next === current) { this.notify.info('No changes to save'); return; }
+  async removeParticipantAction(id: string) {
+    if (!this.canMutateParticipants()) return;
     this.ui.showLoading();
-    try { await this.store.updateExpense(id, { total: next }); this.notify.success('Expense updated'); }
-    catch { this.notify.error('Failed to update expense'); }
+    try { await this.store.removeParticipant(id); this.notify.success('Participant removed'); }
+    catch { this.notify.error('Failed to remove participant'); }
     finally { this.ui.hideLoading(); }
-  }
-
-  async addPerson() {
-    if (this.usingApi && !this.canMutate()) return;
-    this.ui.showLoading();
-    try { await this.store.addParticipant(); this.notify.success('Person added'); }
-    catch { this.notify.error('Failed to add person'); }
-    finally { this.ui.hideLoading(); }
-  }
-
-  async removePerson(id: string) {
-    if (this.usingApi && !this.canMutate()) return;
-    this.ui.showLoading();
-    try { await this.store.removeParticipant(id); this.notify.success('Person removed'); }
-    catch { this.notify.error('Failed to remove person'); }
-    finally { this.ui.hideLoading(); }
-  }
-
-  async removeExpenseAction(id: string) {
-    if (this.usingApi && !this.canMutate()) return;
-    this.ui.showLoading();
-    try { await this.store.removeExpense(id); this.notify.success('Expense removed'); }
-    catch { this.notify.error('Failed to remove expense'); }
-    finally { this.ui.hideLoading(); }
-  }
-
-  async login() {
-    const email = String(this.email || '').trim();
-    const password = String(this.password || '');
-    if (!email || !password) { this.notify.error('Preencha o email e a palavra‑passe.'); return; }
-    this.ui.showLoading();
-    try {
-      await this.auth.signIn(email, password);
-      this.email = '';
-      this.password = '';
-      this.notify.success('Sessão iniciada.');
-    } catch (e: any) {
-      this.notify.error(e?.message || 'Não foi possível iniciar sessão.');
-    } finally {
-      this.ui.hideLoading();
-    }
-  }
-
-  async logout() {
-    await this.auth.signOut();
   }
 }

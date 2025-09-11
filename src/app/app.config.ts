@@ -5,7 +5,7 @@ import { provideRouter, Routes } from '@angular/router';
 import { authGuard } from '@app/infrastructure/auth.guard';
 import { LayoutComponent } from '@app/shared/components/layout.component';
 import { ConfigPageComponent } from '@app/features/settings/components/config-page.component';
-import { ExpensesPageComponent } from '@app/features/transactions/components/expenses-page.component';
+import { TransactionsPageComponent } from '@app/features/transactions/components/transactions-page.component';
 import { GroupsListComponent } from '@app/features/transactions/components/groups-list.component';
 import { ActivityPageComponent } from '@app/features/activity/components/activity-page.component';
 import { GroupPageComponent } from '@app/features/groups/components/group-page.component';
@@ -18,8 +18,8 @@ const routes: Routes = [
     path: '', component: LayoutComponent, canActivate: [authGuard], children: [
       { path: '', pathMatch: 'full', redirectTo: 'config' },
       { path: 'config', component: ConfigPageComponent },
-      { path: 'transactions', component: ExpensesPageComponent },
-      { path: 'transactions/:groupSlug', component: ExpensesPageComponent },
+      { path: 'transactions', component: TransactionsPageComponent },
+      { path: 'transactions/:groupSlug', component: TransactionsPageComponent },
       { path: 'expenses', redirectTo: 'transactions' },
       { path: 'groups', redirectTo: '/transactions', pathMatch: 'full' },
       { path: 'group/:groupSlug', component: GroupPageComponent },
