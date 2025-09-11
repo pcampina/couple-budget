@@ -1,6 +1,7 @@
 import { send } from '../utils';
 import type { Router } from '../router';
 import { userRepo } from '../repositories/userRepo';
+import { Role } from '../types/domain';
 import { signHS256 } from '../auth';
 
 function ensureSecret(): string {
@@ -16,11 +17,12 @@ export function registerAuth(router: Router): void {
       const password = String(body.password || '');
       if (!email || !password) return send(res, 400, { error: 'Email and password are required' });
       const repo = userRepo();
-      const u = await repo.createUser(email, name, password, 'user');
+      const u = await repo.createUser(email, name, password, Role.User);
       return send(res, 201, { id: u.id, email: u.email, name: u.name, role: u.role });
-    } catch (e: any) {
-      const msg = String(e?.message || '');
-      if ((e as any)?.code === '23505' || /unique/i.test(msg)) return send(res, 409, { error: 'Email already exists' });
+    } catch (e: unknown) {
+      const code = (e as { code?: unknown })?.code;
+      const msg = String((e as Error)?.message || '');
+      if (code === '23505' || /unique/i.test(msg)) return send(res, 409, { error: 'Email already exists' });
       return send(res, 500, { error: 'Unable to register' });
     }
   });
@@ -39,10 +41,10 @@ export function registerAuth(router: Router): void {
         sub: u.id,
         email: u.email,
         role: 'authenticated',
-        app_metadata: { roles: [u.role] },
+        app_metadata: { roles: [u.role] as string[] },
         iat: now,
         exp: now + 60 * 60 * 24, // 24h
-      } as any;
+      };
       const token = signHS256(payload, ensureSecret());
       return send(res, 200, { access_token: token });
     } catch {
@@ -63,4 +65,3 @@ export function registerAuth(router: Router): void {
     }
   });
 }
-

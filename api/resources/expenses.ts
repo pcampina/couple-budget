@@ -6,13 +6,13 @@ import { userRepo } from '../repositories/userRepo';
 
 export function registerExpenses(router: Router): void {
   router.add('GET', '/expenses', withAuth('user', async (req, res) => {
-    const userId = ((req as any).user?.id as string) || 'anon';
+    const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
-    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     const page = Number(url.searchParams.get('page') || '');
     const limit = Number(url.searchParams.get('limit') || '');
     const rows = await repo.listExpenses(budgetId);
@@ -25,16 +25,16 @@ export function registerExpenses(router: Router): void {
     const start = (p - 1) * l;
     const items = rows.slice(start, start + l);
     return send(res, 200, { items, total, page: p, pageSize: l });
-  }) as any);
+  }));
 
   router.add('POST', '/expenses', withAuth('user', async (req, res) => {
-    const userId = ((req as any).user?.id as string) || 'anon';
+    const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
-    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     type Body = { name?: string; total?: number; type?: string; paid?: boolean };
     const body = await readJson<Body>(req);
     const name = String((body.name || '').toString().trim()) || 'Expense';
@@ -47,7 +47,7 @@ export function registerExpenses(router: Router): void {
       try {
         const users = userRepo();
         const self = await users.findById(userId);
-        const email = String((self as any)?.email || '').toLowerCase();
+        const email = String(self?.email || '').toLowerCase();
         if (email) {
           const name = email.split('@')[0] || 'You';
           await repo.addParticipant(budgetId, name, 0, email);
@@ -61,16 +61,16 @@ export function registerExpenses(router: Router): void {
     const e = await repo.addExpense(budgetId, userId, name, total, type, paid);
     try { await repo.logActivity(userId, budgetId, 'add-expense', 'expense', e.id, { name, total, type }); } catch {}
     return send(res, 201, e);
-  }) as any);
+  }));
 
   router.add('PATCH', '/expenses/:id', withAuth('user', async (req, res, params) => {
-    const userId = ((req as any).user?.id as string) || 'anon';
+    const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
-    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     type Body = { name?: string; total?: number; type?: string; paid?: boolean };
     const body = await readJson<Body>(req);
     const updated = await repo.updateExpense(budgetId, params.id, {
@@ -82,18 +82,18 @@ export function registerExpenses(router: Router): void {
     if (!updated) return send(res, 404, { error: 'Not found' });
     try { await repo.logActivity(userId, budgetId, 'update-expense', 'expense', params.id, body); } catch {}
     return send(res, 200, updated);
-  }) as any);
+  }));
 
   router.add('DELETE', '/expenses/:id', withAuth('user', async (req, res, params) => {
-    const userId = ((req as any).user?.id as string) || 'anon';
+    const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
-    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     await repo.deleteExpense(budgetId, params.id, userId);
     try { await repo.logActivity(userId, budgetId, 'delete-expense', 'expense', params.id, {}); } catch {}
     return send(res, 204);
-  }) as any);
+  }));
 }

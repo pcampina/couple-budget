@@ -27,7 +27,6 @@ export function registerDocs(router: Router): void {
     return send(res, 200, openapi);
   });
   router.add('GET', '/docs', async (_req, res) => {
-    return send(res, 200, html as any, { 'Content-Type': 'text/html; charset=utf-8' } as any);
+    return send<string>(res, 200, html, { 'Content-Type': 'text/html; charset=utf-8' });
   });
 }
-

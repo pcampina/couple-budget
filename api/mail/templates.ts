@@ -12,6 +12,14 @@ export function inviteTemplate(options: { inviterEmail: string; groupName: strin
   return { subject, text, html };
 }
 
-function escapeHtml(s: string) { return String(s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'} as any)[c]); }
+function escapeHtml(s: string) {
+  const map: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+  };
+  return String(s).replace(/[&<>"']/g, (c) => map[c] || c);
+}
 function escapeAttr(s: string) { return String(s).replace(/"/g, '&quot;'); }
-

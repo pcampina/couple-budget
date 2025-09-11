@@ -1,17 +1,18 @@
 type SendOptions = { to: string; subject: string; text?: string; html?: string };
+type MailTransport = { sendMail: (opts: { from: string; to: string; subject: string; text?: string; html?: string }) => Promise<unknown> };
 
-let transporter: any = null;
-async function getTransport(): Promise<any> {
+let transporter: MailTransport | null = null;
+async function getTransport(): Promise<MailTransport | null> {
   try {
     if (transporter) return transporter;
     // Dynamic import to avoid build/runtime failure if module is missing
     const nodemailer = await import('nodemailer');
     const host = process.env.SMTP_HOST || 'localhost';
     const port = Number(process.env.SMTP_PORT || '1025');
-    const user = process.env.SMTP_USER || undefined as any;
-    const pass = process.env.SMTP_PASS || undefined as any;
+    const user: string | undefined = process.env.SMTP_USER || undefined;
+    const pass: string | undefined = process.env.SMTP_PASS || undefined;
     const auth = user && pass ? { user, pass } : undefined;
-    transporter = nodemailer.createTransport({ host, port, secure: false, auth });
+    transporter = nodemailer.createTransport({ host, port, secure: false, auth }) as unknown as MailTransport;
     return transporter;
   } catch {
     return null;

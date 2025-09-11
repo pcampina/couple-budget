@@ -2,6 +2,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { send } from './utils';
 import crypto from 'node:crypto';
 import { userRepo } from './repositories/userRepo';
+import { Role } from './types/domain';
 
 type JwtPayload = {
   sub?: string;
@@ -10,7 +11,7 @@ type JwtPayload = {
   exp?: number;
   nbf?: number;
   iat?: number;
-  [k: string]: any;
+  [k: string]: unknown;
 };
 
 function b64urlDecode(input: string): Buffer {
@@ -66,11 +67,16 @@ function extractRole(payload: JwtPayload): 'admin' | 'user' | 'authenticated' | 
   return undefined;
 }
 
-export function withAuth<P extends any[]>(
+export function withAuth(
   minRole: 'user' | 'admin',
-  handler: (req: IncomingMessage, res: ServerResponse, ...rest: P) => unknown | Promise<unknown>
+  handler: (req: IncomingMessage, res: ServerResponse, params: Record<string, string>, search: URLSearchParams) => unknown | Promise<unknown>
 ) {
-  return async (req: IncomingMessage, res: ServerResponse, ...rest: P) => {
+  return async (
+    req: IncomingMessage,
+    res: ServerResponse,
+    params: Record<string, string> = {},
+    search: URLSearchParams = new URLSearchParams()
+  ) => {
     const secret = process.env.AUTH_JWT_SECRET; // JWT secret
     if (!secret) {
       // Dev mode: try to parse token payload without verifying, so downstream has user info
@@ -80,12 +86,14 @@ export function withAuth<P extends any[]>(
         if (m) {
           const parts = m[1].split('.');
           if (parts.length === 3) {
-            const payload = JSON.parse(b64urlDecode(parts[1]).toString('utf-8')) as any;
-            (req as any).user = { id: payload?.sub || 'dev-user', role: extractRole(payload), email: payload?.email };
+            const payload = JSON.parse(b64urlDecode(parts[1]).toString('utf-8')) as JwtPayload;
+            const r = extractRole(payload);
+            const mapped: Role | 'authenticated' | undefined = r === 'admin' ? Role.Admin : r === 'user' ? Role.User : 'authenticated';
+            req.user = { id: (payload.sub as string) || 'dev-user', role: mapped, email: (payload as { email?: string })?.email };
           }
         }
       } catch {}
-      return handler(req, res, ...rest);
+      return handler(req, res, params, search);
     }
     const auth = String(req.headers['authorization'] || '');
     const m = auth.match(/^Bearer\s+(.+)$/i);
@@ -94,11 +102,11 @@ export function withAuth<P extends any[]>(
     if (!payload) return send(res, 401, { error: 'Invalid token' });
     const role = extractRole(payload);
     // Backfill email if missing in token (for legacy tokens)
-    let email = (payload as any)?.email as string | undefined;
+    let email = (payload as { email?: string })?.email as string | undefined;
     if (!email && payload.sub) {
       try {
-        const repo = userRepo() as any;
-        const byId = await (repo.findById ? repo.findById(payload.sub) : null);
+        const repo = userRepo();
+        const byId = await repo.findById(payload.sub);
         email = (byId && byId.email) || email;
       } catch {}
     }
@@ -109,7 +117,8 @@ export function withAuth<P extends any[]>(
       if (!hasMinimalAccess) return send(res, 403, { error: 'Forbidden' });
     }
     // Attach auth to request for downstream if needed
-    (req as any).user = { id: payload.sub, role, email };
-    return handler(req, res, ...rest);
+    const mappedRole: Role | 'authenticated' | undefined = role === 'admin' ? Role.Admin : role === 'user' ? Role.User : 'authenticated';
+    req.user = { id: payload.sub, role: mappedRole, email };
+    return handler(req, res, params, search);
   };
 }

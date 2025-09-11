@@ -3,17 +3,18 @@ import { splitByIncome } from '../domain/split';
 import type { Router } from '../router';
 import { withAuth } from '../auth';
 import { budgetRepo } from '../repositories/budgetRepo';
+import type { DbExpense } from '../repositories/budgetRepo';
 
 async function expensesWithAllocations(budgetId: string) {
   const repo = budgetRepo();
   const expenses = await repo.listExpenses(budgetId);
-  const results: any[] = [];
+  const results: Array<DbExpense & { allocations: Record<string, number> }> = [];
   for (const e of expenses) {
-    const participantsAt = await (repo as any).getParticipantsIncomeAt?.(budgetId, (e as any).created_at || new Date().toISOString())
+    const participantsAt = await repo.getParticipantsIncomeAt?.(budgetId, e.created_at || new Date().toISOString())
       || await repo.listParticipants(budgetId);
     results.push({
       ...e,
-      allocations: splitByIncome((e as any).total || 0, participantsAt as any),
+      allocations: splitByIncome(e.total || 0, participantsAt),
     });
   }
   return results;
@@ -34,14 +35,14 @@ async function totalsPerParticipant(budgetId: string) {
 
 export function registerStats(router: Router): void {
   router.add('GET', '/stats', withAuth('user', async (req, res) => {
-    const userId = ((req as any).user?.id as string) || 'anon';
-    const userEmail = String((req as any).user?.email || '').toLowerCase();
+    const userId = (req.user?.id as string) || 'anon';
+    const userEmail = String(req.user?.email || '').toLowerCase();
     const repo = budgetRepo();
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
     const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
-    if ((repo as any).hasAccess && !(await (repo as any).hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     const participants = await repo.listParticipants(budgetId);
     const expenses = await repo.listExpenses(budgetId);
     const totalIncome = participants.reduce((acc, p) => acc + (p.income || 0), 0);
@@ -58,5 +59,5 @@ export function registerStats(router: Router): void {
       totalExpenses,
       totalsPerParticipant: await totalsPerParticipant(budgetId),
     });
-  }) as any);
+  }));
 }

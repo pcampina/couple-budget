@@ -6,8 +6,8 @@ import { userRepo } from '../repositories/userRepo';
 
 export function registerGroup(router: Router): void {
   router.add('GET', '/group/members', withAuth('user', async (req, res) => {
-    const userId = String(((req as any).user?.id as string) || '');
-    let userEmail = String((req as any).user?.email || '').toLowerCase();
+    const userId = String((req.user?.id as string) || '');
+    let userEmail = String(req.user?.email || '').toLowerCase();
     const budget = budgetRepo();
     const users = userRepo();
     const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
@@ -15,9 +15,9 @@ export function registerGroup(router: Router): void {
     const defaultBudgetId = await budget.getOrCreateDefaultBudgetId(userId);
     const requestedBudgetId = qGroup || defaultBudgetId;
     // Authorization: ensure user can access the requested group
-    if ((budget as any).hasAccess && !(await (budget as any).hasAccess(requestedBudgetId, userId))) {
+    if (budget.hasAccess && !(await budget.hasAccess(requestedBudgetId, userId))) {
       // Allow default owner access fallback
-      const isOwner = (budget as any).isOwner ? await (budget as any).isOwner(requestedBudgetId, userId) : false;
+      const isOwner = budget.isOwner ? await budget.isOwner(requestedBudgetId, userId) : false;
       if (!isOwner) return send(res, 403, { error: 'Forbidden' });
     }
     const budgetId = requestedBudgetId;
@@ -40,15 +40,15 @@ export function registerGroup(router: Router): void {
       const email = (p.email || '').toLowerCase();
       // If membership table exists, compute accepted from membership; else fallback to user existence
       let accepted = false;
-      if ((budget as any).listInvites || (budget as any).hasAccess) {
+      if (budget.listInvites || budget.hasAccess) {
         // A member is "accepted" if there's a registered user with this email and that user has access to the budget
         const u = email ? await users.findByEmail(email) : null;
-        accepted = !!(u && ((budget as any).hasAccess ? await (budget as any).hasAccess(budgetId, u.id) : false));
+        accepted = !!(u && (budget.hasAccess ? await budget.hasAccess(budgetId, u.id) : false));
       } else {
         accepted = email ? !!(await users.findByEmail(email)) : false;
       }
       return { id: p.id, name: p.name, email: p.email, accepted };
     }));
     return send(res, 200, items);
-  }) as any);
+  }));
 }

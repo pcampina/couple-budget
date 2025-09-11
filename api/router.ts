@@ -1,7 +1,12 @@
 import { send } from './utils';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-type Handler = (req: IncomingMessage, res: ServerResponse, params: Record<string, string>, search: URLSearchParams) => unknown | Promise<unknown>;
+export type Handler = (
+  req: IncomingMessage,
+  res: ServerResponse,
+  params: Record<string, string>,
+  search: URLSearchParams
+) => unknown | Promise<unknown>;
 
 function compilePath(pattern: string): RegExp {
   const re = pattern.replace(/:[^/]+/g, m => `(?<${m.slice(1)}>[^/]+)`);
@@ -38,4 +43,3 @@ export class Router {
     return send(res, 404, { error: 'Route not found' });
   }
 }
-
