@@ -49,6 +49,7 @@ describe('AppComponent unit', () => {
 
   beforeEach(() => {
     fakeStore = {
+      load: vi.fn(),
       addTransaction: vi.fn(() => Promise.resolve()), // Mock addTransaction to return a resolved promise
       participants: vi.fn(() => [{ id: 'a' }, { id: 'b' }]),
       participantCount: vi.fn(() => 2),

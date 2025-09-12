@@ -42,6 +42,7 @@ export class AppComponent {
 
   constructor() {
     this.auth.load();
+    this.store.load(); // Call store.load() after auth.load()
   }
 
   isValid(v: string | number | null): boolean {

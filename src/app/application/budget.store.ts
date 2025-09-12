@@ -146,12 +146,16 @@ export class BudgetStore {
   }
 
   constructor() {
+    // No direct API calls in constructor to avoid circular dependencies
+  }
+
+  async load() {
     if (this.useApi) {
       try {
         const gid = typeof localStorage !== 'undefined' ? localStorage.getItem('groupId') : null;
         if (gid) this._groupId.set(gid);
       } catch {}
-      this.refreshFromApi();
+      await this.refreshFromApi();
     }
   }
 
