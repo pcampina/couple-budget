@@ -13,8 +13,7 @@ services:
     region: frankfurt
     healthCheckPath: /api/health
     buildCommand: npm ci --include=dev && npm run build:api
-    startCommand: node dist-api/server.js
-    postDeployCommand: npm run db:migrate
+    startCommand: npm run db:migrate && node dist-api/server.js
     envVars:
       - key: NODE_ENV
         value: production
