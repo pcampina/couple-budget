@@ -13,7 +13,7 @@ export function registerGroups(router: Router): void {
   router.add('GET', '/groups', withAuth('user', async (req, res) => {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const items = (await repo.listUserBudgets?.(userId)) ?? [] as Array<{ id: string; name: string; role: 'owner' | 'member'; shared?: boolean }>;
+    const items = ((await repo.listUserBudgets?.(userId)) ?? []) as Array<{ id: string; name: string; role: 'owner' | 'member'; shared?: boolean }>;
     // Augment with shared flag when possible: shared if has members or pending invites
     for (const it of items) {
       try {
