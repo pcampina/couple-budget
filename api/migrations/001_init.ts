@@ -1,5 +1,6 @@
-/** @param {import('knex').Knex} knex */
-exports.up = async function up(knex) {
+import type { Knex } from 'knex';
+
+export async function up(knex: Knex): Promise<void> {
   await knex.schema.createTable('budgets', (t) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.string('name').notNullable().defaultTo('Default');
@@ -24,11 +25,11 @@ exports.up = async function up(knex) {
     // Ownership: which user created/owns the expense
     t.string('owner_user_id').notNullable().defaultTo('');
   });
-};
+}
 
-/** @param {import('knex').Knex} knex */
-exports.down = async function down(knex) {
+export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('expenses');
   await knex.schema.dropTableIfExists('participants');
   await knex.schema.dropTableIfExists('budgets');
-};
+}
+

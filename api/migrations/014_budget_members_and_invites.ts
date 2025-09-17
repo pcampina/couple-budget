@@ -1,5 +1,6 @@
-/** @param {import('knex').Knex} knex */
-exports.up = async function up(knex) {
+import type { Knex } from 'knex';
+
+export async function up(knex: Knex): Promise<void> {
   const hasMembers = await knex.schema.hasTable('budget_members');
   if (!hasMembers) {
     await knex.schema.createTable('budget_members', (t) => {
@@ -25,12 +26,11 @@ exports.up = async function up(knex) {
       t.timestamp('created_at').notNullable().defaultTo(knex.fn.now());
     });
   }
-};
+}
 
-/** @param {import('knex').Knex} knex */
-exports.down = async function down(knex) {
-  const dropTable = async (name) => { try { await knex.schema.dropTableIfExists(name); } catch {} };
+export async function down(knex: Knex): Promise<void> {
+  const dropTable = async (name: string) => { try { await knex.schema.dropTableIfExists(name); } catch {} };
   await dropTable('budget_invites');
   await dropTable('budget_members');
-};
+}
 

@@ -1,13 +1,14 @@
-/** @param {import('knex').Knex} knex */
-exports.up = async function up(knex) {
+import type { Knex } from 'knex';
+
+export async function up(knex: Knex): Promise<void> {
   const exists = await knex.schema.hasTable('expenses');
   const txExists = await knex.schema.hasTable('transactions');
   if (exists && !txExists) {
     await knex.schema.renameTable('expenses', 'transactions');
   }
   // Ensure owner_user_id is uuid to match users.id
-  const col = await knex('transactions').columnInfo().catch(() => ({}));
-  const t = (col && col.owner_user_id && col.owner_user_id.type) || '';
+  const col = await knex('transactions').columnInfo().catch(() => ({} as any));
+  const t = (col && (col as any).owner_user_id && (col as any).owner_user_id.type) || '';
   if (t && t !== 'uuid') {
     await knex.schema.alterTable('transactions', (tbl) => {
       tbl.uuid('owner_user_id_uuid').nullable();
@@ -25,13 +26,13 @@ exports.up = async function up(knex) {
   // Ensure FK owner_user_id -> users(id)
   try { await knex.raw('ALTER TABLE transactions DROP CONSTRAINT IF EXISTS transactions_owner_user_fk'); } catch {}
   try { await knex.raw('ALTER TABLE transactions ADD CONSTRAINT transactions_owner_user_fk FOREIGN KEY (owner_user_id) REFERENCES users(id)'); } catch {}
-};
+}
 
-/** @param {import('knex').Knex} knex */
-exports.down = async function down(knex) {
+export async function down(knex: Knex): Promise<void> {
   const exists = await knex.schema.hasTable('transactions');
   const ex2 = await knex.schema.hasTable('expenses');
   if (exists && !ex2) {
     await knex.schema.renameTable('transactions', 'expenses');
   }
-};
+}
+
