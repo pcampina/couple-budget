@@ -274,7 +274,7 @@ function sqlRepo(db: Knex): BudgetRepo {
         .select('b.id', 'b.name', db.raw("'member' as role"))
         .where('m.user_id', userId);
       const rows = await owned.unionAll([memberOf]);
-      return rows as Array<{ id: string; name: string; role: 'owner' | 'member' }>;
+      return rows as unknown as Array<{ id: string; name: string; role: 'owner' | 'member' }>;
     },
     async addMember(budgetId: string, userId: string) {
       const exists = await db('budget_members').where({ budget_id: budgetId, user_id: userId }).first();
@@ -397,7 +397,7 @@ function sqlRepo(db: Knex): BudgetRepo {
       const rows = await db('transactions')
         .select('id', 'budget_id', 'name', db.raw('CAST(total AS FLOAT) as total'), 'owner_user_id', 'type_code', 'created_at', 'paid')
         .where({ budget_id: budgetId });
-      return rows as DbTransaction[];
+      return rows as unknown as DbTransaction[];
     },
     async addTransaction(budgetId: string, ownerUserId: string, name: string, total: number, type_code: string = 'expense', paid: boolean = false): Promise<DbTransaction> {
       let typeCode = type_code;
@@ -470,7 +470,7 @@ function sqlRepo(db: Knex): BudgetRepo {
         .whereIn('participant_id', ids)
         .andWhere('effective_from', '<=', at);
       const byPid = new Map<string, { income: number; effective_from: string }[]>();
-      for (const r of rows as Array<{ participant_id: string; income: number; effective_from: Date | string }>) {
+      for (const r of (rows as unknown as Array<{ participant_id: string; income: number; effective_from: Date | string }>)) {
         const list = byPid.get(r.participant_id) || [];
         list.push({ income: Number(r.income), effective_from: new Date(r.effective_from).toISOString() });
         byPid.set(r.participant_id, list);
