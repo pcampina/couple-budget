@@ -1,7 +1,6 @@
 import path from 'node:path';
 import fs from 'node:fs';
 import type { Knex } from 'knex';
-import { fileURLToPath } from 'node:url';
 
 // Simple .env loader (no dependency)
 function loadEnv(file: string) {
@@ -20,8 +19,7 @@ function loadEnv(file: string) {
   } catch {}
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const here = path.resolve(path.dirname(__filename));
+const here = path.resolve(__dirname);
 loadEnv(path.resolve(here, '../.env'));
 
 const config: Knex.Config = {
@@ -35,4 +33,3 @@ const config: Knex.Config = {
 };
 
 export default config;
-
