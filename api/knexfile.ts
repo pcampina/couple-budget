@@ -1,8 +1,10 @@
 import path from 'node:path';
 import fs from 'node:fs';
+import type { Knex } from 'knex';
+import { fileURLToPath } from 'node:url';
 
 // Simple .env loader (no dependency)
-function loadEnv(file) {
+function loadEnv(file: string) {
   try {
     if (!fs.existsSync(file)) return;
     const content = fs.readFileSync(file, 'utf-8');
@@ -13,21 +15,22 @@ function loadEnv(file) {
       if (i === -1) continue;
       const k = t.slice(0, i).trim();
       const v = t.slice(i + 1).trim().replace(/^['"]|['"]$/g, '');
-      if (process.env[k] == null) process.env[k] = v;
+      if ((process as any).env[k] == null) (process as any).env[k] = v;
     }
   } catch {}
 }
 
-loadEnv(path.resolve(path.dirname(new URL(import.meta.url).pathname), '../.env'));
+const __filename = fileURLToPath(import.meta.url);
+const here = path.resolve(path.dirname(__filename));
+loadEnv(path.resolve(here, '../.env'));
 
-/** @type {import('knex').Knex.Config} */
-const config = {
+const config: Knex.Config = {
   client: 'pg',
-  connection: process.env.SUPABASE_DB_URL,
+  connection: process.env['SUPABASE_DB_URL'],
   migrations: {
-    directory: path.resolve(path.dirname(new URL(import.meta.url).pathname), './migrations'),
+    directory: path.resolve(here, './migrations'),
     tableName: 'knex_migrations',
-    extension: 'js',
+    extension: 'ts',
   },
 };
 

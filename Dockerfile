@@ -18,12 +18,11 @@ ENV NODE_ENV=production
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist-api ./dist-api
 
-# Copy migrations and knex config
-COPY api/knexfile.mjs ./api/knexfile.mjs
+# Copy migrations and knex config (TypeScript)
+COPY api/knexfile.ts ./api/knexfile.ts
 COPY api/migrations ./api/migrations
 
 EXPOSE 3333
 
-# Run migrations then start API
-CMD sh -c "npx knex --knexfile api/knexfile.mjs migrate:latest && node dist-api/server.js"
-
+# Run migrations (TypeScript via ts-node) then start API
+CMD sh -c "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:latest && node dist-api/server.js"

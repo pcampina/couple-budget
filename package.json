@@ -13,8 +13,8 @@
     "test:coverage": "vitest run --coverage",
     "api": "ts-node api/server.ts",
     "build:api": "tsc -p api/tsconfig.json",
-    "db:migrate": "knex --knexfile api/knexfile.mjs migrate:latest",
-    "db:rollback": "knex --knexfile api/knexfile.mjs migrate:rollback"
+    "db:migrate": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:latest",
+    "db:rollback": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:rollback"
   },
   "dependencies": {
     "@angular/animations": "20.2.1",
