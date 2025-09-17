@@ -32,8 +32,8 @@ export interface BudgetRepo {
   deleteParticipant?(budgetId: string, id: string): Promise<boolean>;
   listTransactions(budgetId: string): Promise<DbTransaction[]>;
   addTransaction(budgetId: string, ownerUserId: string, name: string, total: number, type_code?: string, paid?: boolean): Promise<DbTransaction>;
-  updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, ownerUserId: string): Promise<DbTransaction | null>;
-  deleteTransaction(budgetId: string, id: string, ownerUserId: string): Promise<boolean>;
+  updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, actorUserId: string): Promise<DbTransaction | null>;
+  deleteTransaction(budgetId: string, id: string, actorUserId: string): Promise<boolean>;
   recordIncomeChange?(participantId: string, income: number, effective_from: string): Promise<void>;
   getParticipantsIncomeAt?(budgetId: string, atIso: string): Promise<DbParticipant[]>;
   logActivity(userId: string, budgetId: string, action: string, entityType: string, entityId: string, payload: unknown): Promise<DbActivity>;
@@ -184,15 +184,29 @@ function memory(): BudgetRepo {
       const t: DbTransaction = { id: uuid(), budget_id: budgetId, name, total, owner_user_id: ownerUserId, type_code, created_at: new Date().toISOString(), paid: !!paid };
       arr.push(t); return t;
     },
-    async updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, ownerUserId: string) {
-      const arr = state.transactions.get(budgetId) || []; const i = arr.findIndex(t => t.id === id && t.owner_user_id === ownerUserId);
-      if (i < 0) return null; arr[i] = { ...arr[i], ...patch }; return arr[i];
-    },
-    async deleteTransaction(budgetId: string, id: string, ownerUserId: string) {
+    async updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, actorUserId: string) {
       const arr = state.transactions.get(budgetId) || [];
-      const n = arr.length;
-      state.transactions.set(budgetId, arr.filter(t => !(t.id === id && t.owner_user_id === ownerUserId)));
-      return n !== (state.transactions.get(budgetId) || []).length;
+      const i = arr.findIndex(t => t.id === id);
+      if (i < 0) return null;
+      const target = arr[i];
+      const ownsTransaction = target.owner_user_id === actorUserId;
+      const isBudgetOwner = (state.budgets.get(budgetId)?.owner_user_id === actorUserId);
+      const isMember = !!state.members.get(budgetId)?.has(actorUserId);
+      if (!ownsTransaction && !isBudgetOwner && !isMember) return null;
+      arr[i] = { ...target, ...patch };
+      return arr[i];
+    },
+    async deleteTransaction(budgetId: string, id: string, actorUserId: string) {
+      const arr = state.transactions.get(budgetId) || [];
+      const i = arr.findIndex(t => t.id === id);
+      if (i < 0) return false;
+      const target = arr[i];
+      const ownsTransaction = target.owner_user_id === actorUserId;
+      const isBudgetOwner = (state.budgets.get(budgetId)?.owner_user_id === actorUserId);
+      const isMember = !!state.members.get(budgetId)?.has(actorUserId);
+      if (!ownsTransaction && !isBudgetOwner && !isMember) return false;
+      arr.splice(i, 1);
+      return true;
     },
     async recordIncomeChange(participantId: string, income: number, effective_from: string) {
       const list = state.incomeHistory.get(participantId) || [];
@@ -410,15 +424,35 @@ function sqlRepo(db: Knex): BudgetRepo {
         .returning(['id', 'budget_id', 'name', db.raw('CAST(total AS FLOAT) as total'), 'owner_user_id', 'type_code', 'created_at', 'paid']);
       return row as DbTransaction;
     },
-    async updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, ownerUserId: string): Promise<DbTransaction | null> {
+    async updateTransaction(budgetId: string, id: string, patch: Partial<DbTransaction>, actorUserId: string): Promise<DbTransaction | null> {
+      const existing = await db('transactions').select('owner_user_id').where({ budget_id: budgetId, id }).first();
+      if (!existing) return null;
+      const ownerUserId = (existing as { owner_user_id: string }).owner_user_id;
+      if (ownerUserId !== actorUserId) {
+        const isBudgetOwner = await db('budgets').where({ id: budgetId, owner_user_id: actorUserId }).first();
+        if (!isBudgetOwner) {
+          const isMember = await db('budget_members').where({ budget_id: budgetId, user_id: actorUserId }).first();
+          if (!isMember) return null;
+        }
+      }
       const [row] = await db('transactions')
-        .where({ budget_id: budgetId, id, owner_user_id: ownerUserId })
+        .where({ budget_id: budgetId, id })
         .update(patch)
         .returning(['id', 'budget_id', 'name', db.raw('CAST(total AS FLOAT) as total'), 'owner_user_id', 'type_code', 'created_at', 'paid']);
       return (row as DbTransaction) || null;
     },
-    async deleteTransaction(budgetId: string, id: string, ownerUserId: string): Promise<boolean> {
-      const n = await db('transactions').where({ budget_id: budgetId, id, owner_user_id: ownerUserId }).del();
+    async deleteTransaction(budgetId: string, id: string, actorUserId: string): Promise<boolean> {
+      const existing = await db('transactions').select('owner_user_id').where({ budget_id: budgetId, id }).first();
+      if (!existing) return false;
+      const ownerUserId = (existing as { owner_user_id: string }).owner_user_id;
+      if (ownerUserId !== actorUserId) {
+        const isBudgetOwner = await db('budgets').where({ id: budgetId, owner_user_id: actorUserId }).first();
+        if (!isBudgetOwner) {
+          const isMember = await db('budget_members').where({ budget_id: budgetId, user_id: actorUserId }).first();
+          if (!isMember) return false;
+        }
+      }
+      const n = await db('transactions').where({ budget_id: budgetId, id }).del();
       return n > 0;
     },
     async logActivity(userId: string, budgetId: string, action: string, entityType: string, entityId: string, payload: unknown) {
