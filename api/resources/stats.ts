@@ -1,9 +1,9 @@
-import { send } from '../utils';
-import { splitByIncome } from '../domain/split';
-import type { Router } from '../router';
-import { withAuth } from '../auth';
-import { budgetRepo } from '../repositories/budgetRepo';
-import type { DbTransaction } from '../repositories/budgetRepo';
+import { send } from '../utils.js';
+import { splitByIncome } from '../domain/split.js';
+import type { Router } from '../router.js';
+import { withAuth } from '../auth.js';
+import { budgetRepo } from '../repositories/budgetRepo.js';
+import type { DbTransaction } from '../repositories/budgetRepo.js';
 
 async function transactionsWithAllocations(budgetId: string) {
   const repo = budgetRepo();

@@ -1,5 +1,5 @@
-import { getDb } from '../db';
-import { uuid } from '../utils';
+import { getDb } from '../db.js';
+import { uuid } from '../utils.js';
 import type { Knex } from 'knex';
 import crypto from 'node:crypto';
 

@@ -1,8 +1,8 @@
-import { send } from '../utils';
-import type { Router } from '../router';
-import { withAuth } from '../auth';
-import { budgetRepo } from '../repositories/budgetRepo';
-import { userRepo } from '../repositories/userRepo';
+import { send } from '../utils.js';
+import type { Router } from '../router.js';
+import { withAuth } from '../auth.js';
+import { budgetRepo } from '../repositories/budgetRepo.js';
+import { userRepo } from '../repositories/userRepo.js';
 
 export function registerGroup(router: Router): void {
   router.add('GET', '/group/members', withAuth('user', async (req, res) => {

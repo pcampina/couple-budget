@@ -1,4 +1,4 @@
-import { send } from './utils';
+import { send } from './utils.js';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 export type Handler = (

@@ -1,7 +1,7 @@
-import { send, readJson } from '../utils';
-import type { Router } from '../router';
-import { withAuth } from '../auth';
-import { userRepo } from '../repositories/userRepo';
+import { send, readJson } from '../utils.js';
+import type { Router } from '../router.js';
+import { withAuth } from '../auth.js';
+import { userRepo } from '../repositories/userRepo.js';
 
 export function registerUser(router: Router): void {
   router.add('GET', '/users/me', withAuth('user', async (req, res) => {

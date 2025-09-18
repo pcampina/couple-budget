@@ -1,4 +1,4 @@
-import { DbParticipant } from "../repositories/budgetRepo";
+import { DbParticipant } from "../repositories/budgetRepo.js";
 
 export function splitByIncome(total: number, participants: Pick<DbParticipant, 'id' | 'income'>[]): Record<string, number> {
   const incomeSum = participants.reduce((acc, p) => acc + (p.income || 0), 0);

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 function loadDotEnv(filePath: string) {
   try {
@@ -19,6 +20,7 @@ function loadDotEnv(filePath: string) {
 }
 
 // Load project root .env (../.env)
-const rootEnv = path.resolve(__dirname, '../.env');
+const here = path.dirname(fileURLToPath(import.meta.url));
+const rootEnv = path.resolve(here, '../.env');
 loadDotEnv(rootEnv);
 

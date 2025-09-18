@@ -1,7 +1,7 @@
-import { getDb } from '../db';
+import { getDb } from '../db.js';
 import type { Knex } from 'knex';
 import crypto from 'node:crypto';
-import { Role, type User } from '../types/domain';
+import { Role, type User } from '../types/domain.js';
 
 export interface DbUser extends User { password_salt: string; password_hash: string }
 

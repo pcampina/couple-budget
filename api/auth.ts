@@ -1,8 +1,8 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { send } from './utils';
+import { send } from './utils.js';
 import crypto from 'node:crypto';
-import { userRepo } from './repositories/userRepo';
-import { Role } from './types/domain';
+import { userRepo } from './repositories/userRepo.js';
+import { Role } from './types/domain.js';
 
 type JwtPayload = {
   sub?: string;

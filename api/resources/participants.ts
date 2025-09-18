@@ -1,7 +1,7 @@
-import { send, readJson } from '../utils';
-import type { Router } from '../router';
-import { withAuth } from '../auth';
-import { budgetRepo } from '../repositories/budgetRepo';
+import { send, readJson } from '../utils.js';
+import type { Router } from '../router.js';
+import { withAuth } from '../auth.js';
+import { budgetRepo } from '../repositories/budgetRepo.js';
 
 export function registerParticipants(router: Router): void {
   router.add('GET', '/participants', withAuth('user', async (req, res) => {

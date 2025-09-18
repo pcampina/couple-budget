@@ -1,8 +1,8 @@
-import { send } from '../utils';
-import type { Router } from '../router';
-import { userRepo } from '../repositories/userRepo';
-import { Role } from '../types/domain';
-import { signHS256 } from '../auth';
+import { send } from '../utils.js';
+import type { Router } from '../router.js';
+import { userRepo } from '../repositories/userRepo.js';
+import { Role } from '../types/domain.js';
+import { signHS256 } from '../auth.js';
 
 function ensureSecret(): string {
   return process.env.AUTH_JWT_SECRET || 'dev-secret';
@@ -11,7 +11,8 @@ function ensureSecret(): string {
 export function registerAuth(router: Router): void {
   router.add('POST', '/auth/register', async (req, res) => {
     try {
-      const body = await (await import('../utils')).readJson<{ email?: string; name?: string; password?: string }>(req);
+      const { readJson } = await import('../utils.js');
+      const body = await readJson(req) as { email?: string; name?: string; password?: string };
       const email = String(body.email || '').trim().toLowerCase();
       const name = String(body.name || '').trim() || email.split('@')[0] || 'User';
       const password = String(body.password || '');
@@ -29,7 +30,8 @@ export function registerAuth(router: Router): void {
 
   router.add('POST', '/auth/login', async (req, res) => {
     try {
-      const body = await (await import('../utils')).readJson<{ email?: string; password?: string }>(req);
+      const { readJson } = await import('../utils.js');
+      const body = await readJson(req) as { email?: string; password?: string };
       const email = String(body.email || '').trim().toLowerCase();
       const password = String(body.password || '');
       if (!email || !password) return send(res, 400, { error: 'Email and password are required' });
@@ -57,7 +59,7 @@ export function registerAuth(router: Router): void {
       const auth = String(req.headers['authorization'] || '');
       const m = auth.match(/^Bearer\s+(.+)$/i);
       if (!m) return send(res, 400, { valid: false });
-      const { verifyHS256 } = await import('../auth');
+      const { verifyHS256 } = await import('../auth.js');
       const payload = verifyHS256(m[1], ensureSecret());
       return send(res, 200, { valid: !!payload, payload: payload ? { sub: payload.sub, app_metadata: payload.app_metadata, exp: payload.exp } : null });
     } catch {

@@ -1,7 +1,7 @@
-import { send } from '../utils';
-import type { Router } from '../router';
-import { withAuth } from '../auth';
-import { budgetRepo } from '../repositories/budgetRepo';
+import { send } from '../utils.js';
+import type { Router } from '../router.js';
+import { withAuth } from '../auth.js';
+import { budgetRepo } from '../repositories/budgetRepo.js';
 
 export function registerActivities(router: Router): void {
   router.add('GET', '/activities', withAuth('user', async (req, res) => {

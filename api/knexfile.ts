@@ -1,6 +1,7 @@
-import path from 'node:path';
-import fs from 'node:fs';
 import type { Knex } from 'knex';
+import * as path from 'node:path';
+import * as fs from 'node:fs';
+import * as url from 'node:url';
 
 // Simple .env loader (no dependency)
 function loadEnv(file: string) {
@@ -19,14 +20,14 @@ function loadEnv(file: string) {
   } catch {}
 }
 
-const here = path.resolve(__dirname);
+const here = process.cwd();
 loadEnv(path.resolve(here, '../.env'));
 
 const config: Knex.Config = {
   client: 'pg',
   connection: process.env['SUPABASE_DB_URL'],
   migrations: {
-    directory: path.resolve(here, './migrations'),
+    directory: './migrations',
     tableName: 'knex_migrations',
     extension: 'ts',
   },

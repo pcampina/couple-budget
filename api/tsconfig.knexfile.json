@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2020",
-    "module": "Node16",
-    "moduleResolution": "Node16",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "esModuleInterop": true,
     "strict": true,
     "noImplicitAny": true,
@@ -12,21 +12,10 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "types": [
-      "node"
-    ],
-    "typeRoots": [
-      "./types",
-      "../node_modules/@types"
-    ],
+    "types": ["node"],
+    "typeRoots": ["./types", "../node_modules/@types"],
     "outDir": "../dist-api"
   },
-  "include": [
-    "./**/*.ts",
-    "./**/*.d.ts"
-  ],
-  "exclude": [
-    "../node_modules",
-    "./**/*.spec.ts"
-  ]
+  "include": ["./knexfile.ts"],
+  "exclude": ["../node_modules"]
 }

@@ -1,6 +1,6 @@
-import { send } from '../utils';
-import type { Router } from '../router';
-import { openapi } from '../openapi';
+import { send } from '../utils.js';
+import type { Router } from '../router.js';
+import { openapi } from '../openapi.js';
 
 const html = `<!DOCTYPE html>
 <html>

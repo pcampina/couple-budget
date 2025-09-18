@@ -1,12 +1,12 @@
-import { send, readJson } from '../utils';
-import type { Router } from '../router';
-import { withAuth } from '../auth';
-import { budgetRepo } from '../repositories/budgetRepo';
-import type { Participant as DbParticipant } from '../types/domain';
-import type { Invite } from '../types/domain';
-import { userRepo } from '../repositories/userRepo';
-import { sendMail } from '../mailer';
-import { inviteTemplate } from '../mail/templates';
+import { send, readJson } from '../utils.js';
+import type { Router } from '../router.js';
+import { withAuth } from '../auth.js';
+import { budgetRepo } from '../repositories/budgetRepo.js';
+import type { Participant as DbParticipant } from '../types/domain.js';
+import type { Invite } from '../types/domain.js';
+import { userRepo } from '../repositories/userRepo.js';
+import { sendMail } from '../mailer.js';
+import { inviteTemplate } from '../mail/templates.js';
 
 export function registerGroups(router: Router): void {
   // List groups current user can access (owner or member)

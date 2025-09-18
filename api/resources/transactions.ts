@@ -1,8 +1,8 @@
-import { send, readJson } from '../utils';
-import type { Router } from '../router';
-import { withAuth } from '../auth';
-import { budgetRepo } from '../repositories/budgetRepo';
-import { userRepo } from '../repositories/userRepo';
+import { send, readJson } from '../utils.js';
+import type { Router } from '../router.js';
+import { withAuth } from '../auth.js';
+import { budgetRepo } from '../repositories/budgetRepo.js';
+import { userRepo } from '../repositories/userRepo.js';
 
 export function registerTransactions(router: Router): void {
   router.add('GET', '/expenses', withAuth('user', async (req, res) => {
