@@ -2,10 +2,11 @@ import { getDb } from '../db.js';
 import { uuid } from '../utils.js';
 import type { Knex } from 'knex';
 import crypto from 'node:crypto';
+import { userRepo } from './userRepo.js';
 
 export interface DbParticipant { id: string; budget_id: string; user_id?: string | null; income: number; name?: string; email?: string | null }
 export interface DbTransaction { id: string; budget_id: string; name: string; total: number; owner_user_id: string; type_code?: string; created_at?: string; paid?: boolean }
-export interface DbActivity { id: string; user_id: string; budget_id: string; action: string; entity_type: string; entity_id: string; payload: unknown; created_at: string }
+export interface DbActivity { id: string; user_id: string; budget_id: string; action: string; entity_type: string; entity_id: string; payload: unknown; created_at: string; user_name?: string }
 
 export interface BudgetRepo {
   getOrCreateDefaultBudgetId(userId: string): Promise<string>;
@@ -253,8 +254,19 @@ function memory(): BudgetRepo {
       combined.sort((a, b) => b.created_at.localeCompare(a.created_at));
       const total = combined.length;
       const start = (page - 1) * pageSize;
-      const items = combined.slice(start, start + pageSize);
-      return { items, total };
+      const slice = combined.slice(start, start + pageSize).map(item => ({ ...item }));
+      try {
+        const users = userRepo();
+        await Promise.all(slice.map(async (activity) => {
+          if (!activity.user_name && users.findById) {
+            try {
+              const u = await users.findById(activity.user_id);
+              if (u?.name) activity.user_name = u.name;
+            } catch {}
+          }
+        }));
+      } catch {}
+      return { items: slice, total };
     },
     async findParticipantByEmail(email: string) {
       const all = Array.from(state.participants.values()).flat();
@@ -465,10 +477,21 @@ function sqlRepo(db: Knex): BudgetRepo {
       if (budgetIds.length === 0) return { items: [] as DbActivity[], total: 0 };
       const countRow = await db('activity_log').whereIn('budget_id', budgetIds).count<{ count: string }>('id as count').first();
       const total = Number(countRow?.count ?? 0);
-      const rows = await db('activity_log')
-        .select('id', 'user_id', 'budget_id', 'action', 'entity_type', 'entity_id', 'payload', 'created_at')
-        .whereIn('budget_id', budgetIds)
-        .orderBy('created_at', 'desc')
+      const rows = await db('activity_log as a')
+        .leftJoin('users as u', 'u.id', 'a.user_id')
+        .select(
+          'a.id',
+          'a.user_id',
+          'a.budget_id',
+          'a.action',
+          'a.entity_type',
+          'a.entity_id',
+          'a.payload',
+          'a.created_at',
+          db.raw('u.name as user_name')
+        )
+        .whereIn('a.budget_id', budgetIds)
+        .orderBy('a.created_at', 'desc')
         .limit(pageSize)
         .offset((page - 1) * pageSize);
       return { items: rows as DbActivity[], total };

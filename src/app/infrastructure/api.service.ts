@@ -6,7 +6,7 @@ import { TransactionTypeCode } from '@app/domain/enums';
 export interface ApiParticipant { id: string; name: string; income: number; email?: string | null }
 export interface ApiTransaction { id: string; name: string; total: number; type_code?: TransactionTypeCode; paid?: boolean }
 export interface ApiTransactionType { code: TransactionTypeCode | string; name: string }
-export interface ApiActivity { id: string; action: string; entity_type: string; entity_id: string; payload: unknown; created_at: string }
+export interface ApiActivity { id: string; user_id: string; user_name?: string | null; action: string; entity_type: string; entity_id: string; payload: unknown; created_at: string }
 export interface ApiPaged<T> { items: T[]; total: number; page: number; pageSize: number }
 export interface ApiStats {
   participants: ApiParticipant[];

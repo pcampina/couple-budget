@@ -9,6 +9,7 @@
         [class.activity-grid--base]="!cfg.debug" role="row">
         <div class="data-table__cell data-table__cell--head" role="columnheader">When</div>
         <div class="data-table__cell data-table__cell--head" role="columnheader">Action</div>
+        <div class="data-table__cell data-table__cell--head" role="columnheader">By</div>
         @if (cfg.debug) {
         <div class="data-table__cell data-table__cell--head" role="columnheader">Entity</div>
         }
@@ -21,6 +22,7 @@
         [class.activity-grid--base]="!cfg.debug" role="row">
         <div class="data-table__cell">{{ a.created_at | date:'short' }}</div>
         <div class="data-table__cell">{{ friendlyAction(a) }}</div>
+        <div class="data-table__cell">{{ actorName(a) }}</div>
         @if (cfg.debug) {
         <div class="data-table__cell">
           <button class="button button--ghost button--sm" type="button" (click)="toggleRaw(a.id)">

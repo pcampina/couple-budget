@@ -40,6 +40,15 @@ export class ActivityPageComponent {
     try { return String(a.action || '').replace(/-/g, ' '); } catch { return String(a.action || ''); }
   }
 
+  actorName(activity: ApiActivity): string {
+    if (!activity) return '—';
+    const name = String(activity.user_name || '').trim();
+    if (name) return name;
+    const uid = activity.user_id;
+    if (uid) return this.shortId(uid, 6);
+    return '—';
+  }
+
   shortId(id: string | undefined | null, len = 8): string {
     const s = String(id || '');
     if (!s) return '';

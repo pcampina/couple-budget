@@ -1,7 +1,7 @@
 .activity-grid { display: grid; }
 /* Override global grid via CSS variable so row always fills 100% */
-.activity-grid.activity-grid--debug { --dt-cols: minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,2fr); }
-.activity-grid.activity-grid--base { --dt-cols: minmax(0,1.4fr) minmax(0,1fr) minmax(0,2fr); }
+.activity-grid.activity-grid--debug { --dt-cols: minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,2fr); }
+.activity-grid.activity-grid--base { --dt-cols: minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,2fr); }
 .payload { white-space: pre-wrap; word-break: break-word; }
 .entity-type { font-weight: 600; margin-right: 6px; }
 .entity-id {
