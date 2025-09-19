@@ -2,6 +2,7 @@
   "name": "couple-budget",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "gen:config": "node scripts/gen-config.mjs",
     "lint:ids": "node scripts/check-ids.mjs",
@@ -11,10 +12,11 @@
     "test:watch": "vitest",
     "test:ci": "vitest run --reporter=dot --coverage",
     "test:coverage": "vitest run --coverage",
-    "api": "ts-node api/server.ts",
+    "api": "NODE_OPTIONS=\"--loader ts-node/esm\" node api/server.ts",
     "build:api": "tsc -p api/tsconfig.json",
-    "db:migrate": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:latest",
-    "db:rollback": "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:rollback"
+    "fix:imports": "node scripts/fix-imports.mjs",
+    "db:migrate": "NODE_OPTIONS=\"--loader ts-node/esm\" node ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:latest",
+    "db:rollback": "NODE_OPTIONS=\"--loader ts-node/esm\" node ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:rollback"
   },
   "dependencies": {
     "@angular/animations": "20.2.1",
@@ -37,6 +39,7 @@
     "@angular/compiler-cli": "20.2.1",
     "@types/node": "24.3.1",
     "@vitest/coverage-v8": "3.2.4",
+    "glob": "11.0.3",
     "jsdom": "26.1.0",
     "knex": "3.1.0",
     "supertest": "7.1.4",
