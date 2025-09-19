@@ -247,9 +247,17 @@ function memory(): BudgetRepo {
         if (members.has(userId)) accessible.add(budgetId);
       }
       const combined: DbActivity[] = [];
+      const participantNames = new Map<string, string>();
       for (const bid of accessible) {
         const list = state.activitiesByBudget.get(bid) || [];
         combined.push(...list);
+        const participants = state.participants.get(bid) || [];
+        for (const p of participants) {
+          if (p.user_id) {
+            const name = String(p.name || '').trim();
+            if (name) participantNames.set(p.user_id, name);
+          }
+        }
       }
       combined.sort((a, b) => b.created_at.localeCompare(a.created_at));
       const total = combined.length;
@@ -258,11 +266,17 @@ function memory(): BudgetRepo {
       try {
         const users = userRepo();
         await Promise.all(slice.map(async (activity) => {
-          if (!activity.user_name && users.findById) {
-            try {
-              const u = await users.findById(activity.user_id);
-              if (u?.name) activity.user_name = u.name;
-            } catch {}
+          if (activity.user_name) return;
+          if (!users.findById) return;
+          try {
+            const u = await users.findById(activity.user_id);
+            if (u) {
+              activity.user_name = String(u.name || '').trim() || String((u.email || '').split('@')[0] || '').trim() || undefined;
+            }
+          } catch {}
+          if (!activity.user_name) {
+            const participantName = participantNames.get(activity.user_id);
+            if (participantName) activity.user_name = participantName;
           }
         }));
       } catch {}
@@ -479,6 +493,9 @@ function sqlRepo(db: Knex): BudgetRepo {
       const total = Number(countRow?.count ?? 0);
       const rows = await db('activity_log as a')
         .leftJoin('users as u', 'u.id', 'a.user_id')
+        .leftJoin('participants as p', function joinParticipants() {
+          this.on('p.budget_id', '=', 'a.budget_id').andOn('p.user_id', '=', 'a.user_id');
+        })
         .select(
           'a.id',
           'a.user_id',
@@ -488,7 +505,7 @@ function sqlRepo(db: Knex): BudgetRepo {
           'a.entity_id',
           'a.payload',
           'a.created_at',
-          db.raw('u.name as user_name')
+          db.raw("COALESCE(u.name, p.name, split_part(u.email, '@', 1)) as user_name")
         )
         .whereIn('a.budget_id', budgetIds)
         .orderBy('a.created_at', 'desc')

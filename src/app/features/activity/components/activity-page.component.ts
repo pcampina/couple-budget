@@ -45,7 +45,8 @@ export class ActivityPageComponent {
     const name = String(activity.user_name || '').trim();
     if (name) return name;
     const uid = activity.user_id;
-    if (uid) return this.shortId(uid, 6);
+    const selfId = this.auth.user()?.sub;
+    if (uid && selfId && uid === selfId) return 'You';
     return '—';
   }
 
