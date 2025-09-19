@@ -7,6 +7,11 @@
 - Live: https://couplebudget.netlify.app/
   - Deployed automatically via Netlify after merges to `main`.
 
+## Hosting
+
+- **Frontend** — Netlify (`netlify.toml`) builds the Angular app with `ng build` and serves the static assets from `dist/couple-budget/browser`.
+- **API** — Render (`render.yaml`) provisions a free Postgres instance and deploys the Node API. The service runs `npm run build:api` during build and starts with `npm run db:migrate && node dist-api/server.js`. Custom environment values (such as `PUBLIC_APP_URL`) can be provided via the Render dashboard.
+
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.1.
 
 ## Overview
