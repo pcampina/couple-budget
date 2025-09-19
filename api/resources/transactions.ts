@@ -12,7 +12,8 @@ export function registerTransactions(router: Router): void {
     const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
-    if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
+    const hasAccess = repo.hasAccess ? await repo.hasAccess(budgetId, userId) : true;
+    if (!hasAccess) return send(res, 403, { error: 'Forbidden' });
     const page = Number(url.searchParams.get('page') || '');
     const limit = Number(url.searchParams.get('limit') || '');
     const rows = await repo.listTransactions(budgetId);
@@ -91,8 +92,12 @@ export function registerTransactions(router: Router): void {
     const qGroup = url.searchParams.get('group') || url.searchParams.get('groupId');
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
-    if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
-    await repo.deleteTransaction(budgetId, params.id, userId);
+    const hasAccess = repo.hasAccess ? await repo.hasAccess(budgetId, userId) : true;
+    if (!hasAccess) return send(res, 403, { error: 'Forbidden' });
+    const isOwner = repo.isOwner ? await repo.isOwner(budgetId, userId) : true;
+    if (!isOwner) return send(res, 403, { error: 'Only the owner can remove transactions' });
+    const deleted = await repo.deleteTransaction(budgetId, params.id, userId);
+    if (!deleted) return send(res, 404, { error: 'Not found' });
     try { await repo.logActivity(userId, budgetId, 'delete-transaction', 'transaction', params.id, {}); } catch {}
     return send(res, 204);
   }));
