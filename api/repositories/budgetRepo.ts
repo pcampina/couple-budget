@@ -53,6 +53,7 @@ function memory(): BudgetRepo {
     invites: new Map<string, { id: string; budget_id: string; inviter_user_id: string; email: string; token: string; accepted_at: string | null; accepted_user_id: string | null; created_at: string }[]>(),
     incomeHistory: new Map<string, { income: number; effective_from: string }[]>(),
     activities: new Map<string, DbActivity[]>(), // key: user_id
+    activitiesByBudget: new Map<string, DbActivity[]>(),
   };
   function ensureBudget(userId: string) {
     let b = Array.from(state.budgets.values()).find(b => b.owner_user_id === userId);
@@ -218,8 +219,8 @@ function memory(): BudgetRepo {
       });
     },
     async logActivity(userId: string, budgetId: string, action: string, entityType: string, entityId: string, payload: unknown) {
-      const arr = state.activities.get(userId) || [];
-      state.activities.set(userId, arr);
+      const byUser = state.activities.get(userId) || [];
+      state.activities.set(userId, byUser);
       const item: DbActivity = {
         id: uuid(),
         user_id: userId,
@@ -230,14 +231,29 @@ function memory(): BudgetRepo {
         payload,
         created_at: new Date().toISOString(),
       };
-      arr.unshift(item);
+      byUser.unshift(item);
+      const byBudget = state.activitiesByBudget.get(budgetId) || [];
+      state.activitiesByBudget.set(budgetId, byBudget);
+      byBudget.unshift(item);
       return item;
     },
     async listActivities(userId: string, page: number, pageSize: number) {
-      const arr = state.activities.get(userId) || [];
-      const total = arr.length;
+      const accessible = new Set<string>();
+      for (const [id, b] of state.budgets.entries()) {
+        if (b.owner_user_id === userId) accessible.add(id);
+      }
+      for (const [budgetId, members] of state.members.entries()) {
+        if (members.has(userId)) accessible.add(budgetId);
+      }
+      const combined: DbActivity[] = [];
+      for (const bid of accessible) {
+        const list = state.activitiesByBudget.get(bid) || [];
+        combined.push(...list);
+      }
+      combined.sort((a, b) => b.created_at.localeCompare(a.created_at));
+      const total = combined.length;
       const start = (page - 1) * pageSize;
-      const items = arr.slice(start, start + pageSize);
+      const items = combined.slice(start, start + pageSize);
       return { items, total };
     },
     async findParticipantByEmail(email: string) {
@@ -440,11 +456,18 @@ function sqlRepo(db: Knex): BudgetRepo {
       return row as DbActivity;
     },
     async listActivities(userId: string, page: number, pageSize: number) {
-      const row = await db('activity_log').where({ user_id: userId }).count<{ count: string }>('id as count').first();
-      const total = Number(row?.count ?? 0);
+      const owned = await db('budgets').select('id').where({ owner_user_id: userId });
+      const memberOf = await db('budget_members').select('budget_id').where({ user_id: userId });
+      const budgetIds = Array.from(new Set([
+        ...owned.map(r => (r as { id: string }).id),
+        ...memberOf.map(r => (r as { budget_id: string }).budget_id)
+      ]));
+      if (budgetIds.length === 0) return { items: [] as DbActivity[], total: 0 };
+      const countRow = await db('activity_log').whereIn('budget_id', budgetIds).count<{ count: string }>('id as count').first();
+      const total = Number(countRow?.count ?? 0);
       const rows = await db('activity_log')
         .select('id', 'user_id', 'budget_id', 'action', 'entity_type', 'entity_id', 'payload', 'created_at')
-        .where({ user_id: userId })
+        .whereIn('budget_id', budgetIds)
         .orderBy('created_at', 'desc')
         .limit(pageSize)
         .offset((page - 1) * pageSize);
