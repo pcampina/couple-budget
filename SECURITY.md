@@ -16,6 +16,5 @@ Only the latest commit on the `main` branch is actively supported for security u
 ## Best Practices in This Repo
 
 - No secrets are committed. Use `.env` locally and `scripts/gen-config.mjs` to generate `public/config.js` at build time.
-- CI builds generate a non-sensitive runtime config for GitHub Pages (no API by default).
+- CI builds generate a non-sensitive runtime config for Netlify (no API by default).
 - Dependencies are scanned and updated regularly via Dependabot.
-

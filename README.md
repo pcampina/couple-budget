@@ -1,12 +1,11 @@
 # CoupleBudget
 
 [![CI](https://github.com/pcampina/couple-budget/actions/workflows/ci.yml/badge.svg)](https://github.com/pcampina/couple-budget/actions/workflows/ci.yml)
-[![Deploy to GitHub Pages](https://github.com/pcampina/couple-budget/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/pcampina/couple-budget/actions/workflows/deploy-pages.yml)
 
 ## Demo
 
-- Live: https://pcampina.github.io/couple-budget/
-  - Deployed automatically on every push to `main` via GitHub Actions.
+- Live: https://couplebudget.netlify.app/
+  - Deployed automatically via Netlify after merges to `main`.
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.1.
 
@@ -186,7 +185,7 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Security
 
 - See `SECURITY.md` for reporting guidelines.
-- CI and Pages deploys do not embed secrets; runtime config is generated without sensitive values.
+- CI builds and Netlify deploys do not embed secrets; runtime config is generated without sensitive values.
 
 ## Contributing
 
