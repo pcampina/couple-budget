@@ -17,6 +17,15 @@ export default defineConfig({
       provider: 'v8',
       reporter: ['text', 'html'],
       reportsDirectory: './coverage/unit',
+      include: ['api/**/*.ts'],
+      exclude: ['api/**/*.spec.ts', 'api/migrations/**', 'api/types/**', 'api/openapi.ts', 'api/knexfile.*'],
+      all: true,
+      thresholds: {
+        statements: 0.8,
+        branches: 0.8,
+        functions: 0.8,
+        lines: 0.8,
+      },
     },
   },
   resolve: {

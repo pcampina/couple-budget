@@ -23,5 +23,5 @@ COPY api ./api
 
 EXPOSE 3333
 
-# Run migrations (TypeScript via ts-node) then start API
-CMD ["sh", "-c", "node -r ts-node/register ./node_modules/knex/bin/cli.js --knexfile api/knexfile.ts migrate:latest && node dist-api/server.js"]
+# Run migrations then start API
+CMD ["sh", "-c", "node ./node_modules/knex/bin/cli.js --knexfile api/knexfile.cjs migrate:latest && node dist-api/server.js"]
