@@ -20,14 +20,25 @@ function loadEnv(file) {
 const here = __dirname;
 loadEnv(path.resolve(here, '../.env'));
 
+const distMigrations = path.resolve(here, '../dist-api/migrations');
+const sourceMigrations = path.resolve(here, './migrations');
+const useDist = fs.existsSync(distMigrations);
+if (!useDist) {
+  try {
+    require('ts-node/register');
+  } catch (err) {
+    console.warn('ts-node/register not available; ensure migrations are built before running.');
+  }
+}
+
 /** @type {import('knex').Knex.Config} */
 const config = {
   client: 'pg',
   connection: process.env.SUPABASE_DB_URL,
   migrations: {
-    directory: path.resolve(here, './migrations'),
+    directory: useDist ? distMigrations : sourceMigrations,
     tableName: 'knex_migrations',
-    extension: 'ts'
+    extension: useDist ? 'js' : 'ts'
   }
 };
 
