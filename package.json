@@ -19,7 +19,7 @@
     "db:rollback": "node ./node_modules/knex/bin/cli.js --knexfile api/knexfile.cjs migrate:rollback"
   },
   "dependencies": {
-    "@angular/animations": "20.2.1",
+    "@angular/animations": "20.3.1",
     "@angular/common": "20.2.1",
     "@angular/compiler": "20.2.1",
     "@angular/core": "20.2.1",
