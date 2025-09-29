@@ -79,7 +79,7 @@ export function registerGroups(router: Router): void {
     const userId = (req.user?.id as string) || 'anon';
     const body = await readJson<{ name?: string }>(req).catch(() => ({} as unknown as { name?: string }));
     const name = String(body?.name || '').trim() || 'Group';
-    
+
     const users = userRepo();
     const user = await users.findById(userId);
     console.log('User found:', user);
@@ -125,7 +125,7 @@ export function registerGroups(router: Router): void {
     for (const i of invites) {
       const link = `${appUrl.replace(/\/$/, '')}/invite/${i.token}`;
       const { subject, text, html } = inviteTemplate({ inviterEmail, groupName, link });
-      try { await sendMail({ to: i.email, subject, text, html }); } catch {}
+      await sendMail({ to: i.email, subject, text, html });
     }
     // Return tokens to allow the client to build links
     return send(res, 201, invites.map((i) => ({ id: i.id, email: i.email, token: i.token, created_at: i.created_at })));

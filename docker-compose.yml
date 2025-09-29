@@ -24,7 +24,7 @@ services:
       PORT: ${PORT:-3333}
       AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:-dev-secret-change-me}
       SUPABASE_DB_URL: ${SUPABASE_DB_URL:-postgresql://couple:couple@db:5432/couple_budget}
-      SMTP_HOST: ${SMTP_HOST:-mailhog}
+      SMTP_HOST: mailhog
       SMTP_PORT: ${SMTP_PORT:-1025}
       SMTP_USER: ${SMTP_USER:-}
       SMTP_PASS: ${SMTP_PASS:-}
@@ -32,6 +32,11 @@ services:
       PUBLIC_APP_URL: ${PUBLIC_APP_URL:-http://localhost:4200}
     ports:
       - "${PORT:-3333}:3333"
+    volumes:
+      - ./api:/app/api
+      - ./package.json:/app/package.json
+      - ./package-lock.json:/app/package-lock.json
+      - ./node_modules:/app/node_modules
 
   mailhog:
     image: mailhog/mailhog:latest

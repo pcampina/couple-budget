@@ -15,8 +15,8 @@
     "api": "NODE_OPTIONS=\"--loader ts-node/esm\" node api/server.ts",
     "build:api": "tsc -p api/tsconfig.json",
     "fix:imports": "node scripts/fix-imports.mjs",
-    "db:migrate": "node ./node_modules/knex/bin/cli.js --knexfile api/knexfile.cjs migrate:latest",
-    "db:rollback": "node ./node_modules/knex/bin/cli.js --knexfile api/knexfile.cjs migrate:rollback"
+    "db:migrate": "knex --knexfile knexfile.ts migrate:latest",
+    "db:rollback": "knex --knexfile knexfile.ts migrate:rollback"
   },
   "dependencies": {
     "@angular/animations": "20.2.1",
