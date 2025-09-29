@@ -18,7 +18,9 @@ vi.mock('@angular/core', () => {
 
   const effect = (fn: () => void) => { try { fn(); } catch {} return () => {}; };
 
-  return { Injectable, signal, computed, effect };
+  const inject = (token: any) => ({});
+
+  return { Injectable, signal, computed, effect, inject };
 });
 
 import { BudgetStore } from '@application/budget.store';
