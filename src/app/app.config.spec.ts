@@ -24,7 +24,7 @@ vi.mock('@angular/router', () => ({
 }));
 
 // Mock local components used in route definitions to avoid Angular JIT
-vi.mock('@app/features/login/components/login.component', () => ({ LoginComponent: class {} }));
+vi.mock('@app/features/login/components/login-page.component', () => ({ LoginPageComponent: class {} }));
 vi.mock('@app/app.component', () => ({ AppComponent: class {} }));
 vi.mock('@app/shared/components/layout.component', () => ({ LayoutComponent: class {} }));
 vi.mock('@app/features/settings/components/config-page.component', () => ({ ConfigPageComponent: class {} }));

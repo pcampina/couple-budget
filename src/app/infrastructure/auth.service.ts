@@ -69,7 +69,7 @@ export class AuthService {
     } catch {}
   }
 
-  async signIn(email: string, password: string) {
+  async signIn(email: string, password: string): Promise<string> {
     const { access_token } = await this.api.login(email, password);
     this._token.set(access_token);
     try { if (typeof localStorage !== 'undefined') localStorage.setItem(this.storageKey, access_token); } catch {}
@@ -85,6 +85,4 @@ export class AuthService {
   async getAccessToken(): Promise<string | null> { return this._token(); }
   isConfigured(): boolean { return true; }
   async refreshAccessToken(): Promise<string | null> { return this._token(); }
-
-  
 }

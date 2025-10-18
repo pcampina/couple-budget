@@ -6,10 +6,9 @@ import { authGuard } from '@app/infrastructure/auth.guard';
 import { LayoutComponent } from '@app/shared/components/layout.component';
 import { ConfigPageComponent } from '@app/features/settings/components/config-page.component';
 import { TransactionsPageComponent } from '@app/features/transactions/components/transactions-page.component';
-import { GroupsListComponent } from '@app/features/transactions/components/groups-list.component';
 import { ActivityPageComponent } from '@app/features/activity/components/activity-page.component';
 import { GroupPageComponent } from '@app/features/groups/components/group-page.component';
-import { LoginComponent } from '@app/features/login/components/login.component';
+import { LoginPageComponent } from '@app/features/login/components/login-page.component';
 import { provideAnimations } from '@angular/platform-browser/animations';
 import { InviteAcceptComponent } from '@app/features/invite-accept/components/invite-accept.component';
 
@@ -26,7 +25,7 @@ const routes: Routes = [
       { path: 'activity', component: ActivityPageComponent },
     ]
   },
-  { path: 'login', component: LoginComponent },
+  { path: 'login', component: LoginPageComponent },
   { path: 'invite/:token', component: InviteAcceptComponent },
   { path: '**', redirectTo: '' },
 ];
