@@ -12,7 +12,7 @@ import { NgpLabel } from 'ng-primitives/form-field';
 @Component({
   selector: 'app-login-page',
   standalone: true,
-  imports: [FormsModule, NgpButton, NgpInput, NgpLabel],
+  imports: [FormsModule, NgpButton, NgpInput],
   templateUrl: './login-page.component.html',
   styleUrls: ['./login-page.component.scss'],
   changeDetection: ChangeDetectionStrategy.OnPush

@@ -1,35 +1,43 @@
-<main class="login-page">
-  <header class="login-page__header">
+<main class="budget">
+  <header class="budget__header">
     <h1>Couple's Budget</h1>
-    <p>Sign in to continue.</p>
+
+    <p class="text--muted">Sign in to continue.</p>
   </header>
 
-  <section class="login-page__card">
-    <h2>Login</h2>
+  <section class="card card--glass login-card">
+    <h2 class="login-card__title">Login</h2>
 
-    <form (submit)="$event.preventDefault(); signIn()" class="login-page__form">
-      <div class="login-page__form-group">
-        <label ngpLabel>Email</label>
-        <input ngpInput placeholder="email@example.com" [(ngModel)]="email" name="email" (keyup.enter)="signIn()" />
-      </div>
+    <form (submit)="$event.preventDefault(); signIn()">
+      <div class="form-grid login-card__grid">
+        <label>
+          <span>Email</span>
 
-      <div class="login-page__form-group">
-        <label ngpLabel>Password</label>
-        <input ngpInput type="password" placeholder="Your password" [(ngModel)]="password" name="password"
-          (keyup.enter)="signIn()" />
+          <input ngpInput class="input" placeholder="email@example.com" [(ngModel)]="email" name="email"
+            (keyup.enter)="signIn()" />
+        </label>
+
+        <label>
+          <span>Password</span>
+
+          <input ngpInput class="input" type="password" placeholder="Your password" [(ngModel)]="password"
+            name="password" (keyup.enter)="signIn()" />
+        </label>
       </div>
 
       @if (error) {
-      <p class="login-page__error">{{ error }}</p>
+      <p class="text--danger login-card__error">{{ error }}</p>
       }
 
-      <button ngpButton type="submit">Login</button>
+      <div class="login-card__actions">
+        <button ngpButton class="button button--success" type="submit">Login</button>
+      </div>
     </form>
   </section>
 </main>
 
 @if (uiService.isLoading()) {
-<div class="login-page__overlay">
-  <div class="login-page__spinner" aria-label="Loading"></div>
+<div class="overlay">
+  <div class="spinner" aria-label="Loading"></div>
 </div>
 }

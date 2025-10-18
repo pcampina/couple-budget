@@ -1,172 +1,23 @@
-@use 'sass:color';
+.login-card {
+  margin: 2rem auto;
 
-$primary-color: #af52de; // A vibrant purple for the main accent
-$dark-bg-start: #1a1a1d;
-$dark-bg-mid: #1f2833;
-$dark-bg-end: #0b0c10;
-$text-color: #f5f5f7;
-$text-color-muted: #a1a1a6;
-$error-color: #e57373;
-
-@keyframes gradient-animation {
-  0% {
-    background-position: 0% 50%;
+  &__title {
+    margin-top: 0;
   }
 
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.login-page {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  overflow: hidden;
-  background: linear-gradient(-45deg, $dark-bg-start, $dark-bg-mid, $dark-bg-end);
-  background-size: 400% 400%;
-  animation: gradient-animation 15s ease infinite;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-
-  &__header {
-    text-align: center;
-    margin-bottom: 3rem;
-
-    h1 {
-      font-size: 3rem;
-      font-weight: 700;
-      color: $text-color;
-      text-shadow: 0 2px 15px rgba(0, 0, 0, 0.3);
-      margin: 0;
-    }
-
-    p {
-      font-size: 1.2rem;
-      color: $text-color-muted;
-      margin-top: 0.5rem;
-    }
-  }
-
-  &__card {
-    width: 100%;
-    max-width: 420px;
-    padding: 3rem;
-    background: rgba(31, 40, 51, 0.5); // Dark glass
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 24px;
-    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
-    backdrop-filter: blur(15px);
-    -webkit-backdrop-filter: blur(15px);
-
-    h2 {
-      font-size: 2rem;
-      font-weight: 600;
-      text-align: center;
-      margin-bottom: 2.5rem;
-      color: $text-color;
-    }
-  }
-
-  &__form-group {
-    display: grid;
-    gap: 0.75rem;
-    margin-bottom: 1.5rem;
-
-    label {
-      font-weight: 500;
-      color: $text-color-muted;
-      font-size: 0.9rem;
-      padding-left: 0.5rem;
-    }
-
-    input {
-      width: 100%;
-      padding: 1rem;
-      background: rgba(0, 0, 0, 0.2);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      font-size: 1rem;
-      color: $text-color;
-      transition: all 0.3s ease;
-
-      &::placeholder {
-        color: $text-color-muted;
-      }
-
-      &:focus {
-        outline: none;
-        border-color: $primary-color;
-        box-shadow: 0 0 0 4px rgba($primary-color, 0.3);
-      }
-    }
+  &__grid {
+    grid-template-columns: 1fr;
   }
 
   &__error {
-    color: $text-color;
-    background: rgba($error-color, 0.3);
-    border: 1px solid rgba($error-color, 0.5);
-    padding: 0.75rem;
-    border-radius: 8px;
-    text-align: center;
-    margin-top: 1.5rem;
-    font-weight: 500;
+    margin-top: 1rem;
   }
 
-  button[ngpButton] {
-    width: 100%;
-    padding: 1rem;
-    border: none;
-    border-radius: 12px;
-    background: $primary-color;
-    color: $text-color;
-    font-size: 1.1rem;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.3s ease;
+  &__actions {
     margin-top: 1.5rem;
 
-    &:hover {
-      background: color.adjust($primary-color, $lightness: 7%);
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    .button {
+      width: 100%;
     }
-
-    &:active {
-      transform: translateY(0);
-      box-shadow: none;
-    }
-  }
-
-  &__overlay {
-    position: fixed;
-    inset: 0;
-    background-color: rgba(0, 0, 0, 0.2);
-    backdrop-filter: blur(5px);
-    -webkit-backdrop-filter: blur(5px);
-    z-index: 999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  &__spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid rgba(255, 255, 255, 0.2);
-    border-top-color: $text-color;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-  }
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
   }
 }
