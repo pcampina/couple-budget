@@ -1,35 +1,36 @@
-// Mock minimal pieces of @angular/core used by the store (signals/computed/Injectable)
-vi.mock('@angular/core', () => {
-  const Injectable = () => (target: any) => target;
-
-  function makeSignal<T>(initial: T) {
-    let value = initial;
-    const fn: any = () => value;
-    fn.set = (v: T) => { value = v; };
-    fn.update = (updater: (v: T) => T) => { value = updater(value); };
-    return fn;
-  }
-
-  const signal = makeSignal;
-  const computed = (calc: () => any) => {
-    const fn: any = () => calc();
-    return fn;
-  };
-
-  const effect = (fn: () => void) => { try { fn(); } catch {} return () => {}; };
-
-  const inject = (token: any) => ({});
-
-  return { Injectable, signal, computed, effect, inject };
-});
-
+import { TestBed } from '@angular/core/testing';
 import { BudgetStore } from '@application/budget.store';
+import { ApiService } from '@app/infrastructure/api.service';
 
 describe('BudgetStore (signals, multi-participant)', () => {
   let store: BudgetStore;
+  let apiService: ApiService;
+
+  const mockApiService = {
+    getUsersMe: vi.fn().mockResolvedValue({ default_income: 1000 }),
+    updateUser: vi.fn().mockResolvedValue(undefined),
+    updateSelfParticipant: vi.fn().mockResolvedValue(undefined),
+    listActivities: vi.fn().mockResolvedValue({ items: [], total: 0 }),
+    getGroup: vi.fn().mockResolvedValue({ id: 'group1', name: 'Test Group', members: [], invites: [] }),
+    createTransaction: vi.fn().mockImplementation((t) => Promise.resolve({ ...t, id: 't' + Math.random() })),
+    updateTransaction: vi.fn().mockImplementation((id, t) => Promise.resolve({ ...t, id })),
+    deleteTransaction: vi.fn().mockResolvedValue(undefined),
+    createParticipant: vi.fn().mockImplementation((p) => Promise.resolve({ ...p, id: 'p' + Math.random() })),
+    updateParticipant: vi.fn().mockImplementation((id, p) => Promise.resolve({ ...p, id })),
+    deleteParticipant: vi.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(async () => {
-    store = new BudgetStore();
+    TestBed.configureTestingModule({
+      providers: [
+        BudgetStore,
+        { provide: ApiService, useValue: mockApiService },
+      ],
+    });
+
+    store = TestBed.inject(BudgetStore);
+    apiService = TestBed.inject(ApiService);
+
     // Initialize with two participants and one transaction (since store now starts empty)
     await store.addParticipant('John', 2000);
     await store.addParticipant('Jane', 1600);

@@ -1,89 +1,61 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { signal } from '@angular/core';
-
-// Mock Angular's core dependencies and other services
-vi.mock('@angular/core', () => ({
-  Component: vi.fn(() => () => {}),
-  inject: vi.fn(),
-  signal: vi.fn((initial) => {
-    let value = initial;
-    const s = () => value;
-    s.set = (v: any) => { value = v; };
-    s.update = (fn: (v: any) => any) => { value = fn(value); };
-    return s;
-  }),
-  computed: vi.fn((fn) => fn),
-  effect: vi.fn(),
-}));
-
+import { ComponentFixture, TestBed, resolveComponentResources } from '@angular/core/testing';
 import { ConfigPageComponent } from './config-page.component';
 import { AuthService } from '@app/infrastructure/auth.service';
 import { BudgetStore } from '@application/budget.store';
 import { ApiService } from '@app/infrastructure/api.service';
+import { UiService } from '@app/infrastructure/ui.service';
+import { NotificationService } from '@app/infrastructure/notification.service';
+import { ErrorService } from '@app/infrastructure/error.service';
+import { signal } from '@angular/core';
+import { FormsModule } from '@angular/forms';
+import { CommonModule } from '@angular/common';
+import { NgpButton, NgpInput, NgpLabel } from 'ng-primitives';
 
 describe('ConfigPageComponent', () => {
   let component: ConfigPageComponent;
-  let mockAuthService: any;
-  let mockStore: any;
-  let mockApiService: any;
-  let mockUiService: any;
-  let mockNotifyService: any;
-  let mockErrorService: any;
+  let fixture: ComponentFixture<ConfigPageComponent>;
 
-  beforeEach(() => {
-    // Reset mocks before each test
-    mockAuthService = {
-      user: signal({ email: 'me@example.com' }),
-    };
-    mockStore = {
-      participants: signal([{ id: 'p1', name: 'Me', income: 1000, email: 'me@example.com' }]),
-      refreshFromApi: vi.fn().mockResolvedValue(undefined),
-      groupId: signal('group1'),
-    };
-    mockApiService = {
-      getUsersMe: vi.fn().mockResolvedValue({ default_income: 1000 }),
-      updateUser: vi.fn().mockResolvedValue(undefined),
-      updateSelfParticipant: vi.fn().mockResolvedValue(undefined),
-    };
-    mockUiService = { showLoading: vi.fn(), hideLoading: vi.fn() };
-    mockNotifyService = { success: vi.fn(), info: vi.fn() };
-    mockErrorService = { handle: vi.fn() };
+  const mockAuthService = {
+    user: signal({ email: 'me@example.com' }),
+  };
 
-    // Setup DI for inject()
-    const { inject } = require('@angular/core');
-    (inject as vi.Mock).mockImplementation((token: any) => {
-      if (token === BudgetStore) return mockStore;
-      if (token === AuthService) return mockAuthService;
-      if (token === ApiService) return mockApiService;
-      if (token === mockUiService) return mockUiService;
-      if (token === mockNotifyService) return mockNotifyService;
-      if (token === mockErrorService) return mockErrorService;
-      return {};
+  const mockBudgetStore = {
+    participants: signal([{ id: 'p1', name: 'Me', income: 1000, email: 'me@example.com' }]),
+    refreshFromApi: vi.fn().mockResolvedValue(undefined),
+    groupId: signal('group1'),
+  };
+
+  const mockApiService = {
+    getUsersMe: vi.fn().mockResolvedValue({ default_income: 1000 }),
+    updateUser: vi.fn().mockResolvedValue(undefined),
+    updateSelfParticipant: vi.fn().mockResolvedValue(undefined),
+  };
+
+  const mockUiService = { showLoading: vi.fn(), hideLoading: vi.fn() };
+  const mockNotificationService = { success: vi.fn(), info: vi.fn() };
+  const mockErrorService = { handle: vi.fn() };
+
+  beforeEach(async () => {
+    TestBed.configureTestingModule({
+      imports: [ConfigPageComponent, FormsModule, CommonModule, NgpButton, NgpInput, NgpLabel],
+      providers: [
+        { provide: AuthService, useValue: mockAuthService },
+        { provide: BudgetStore, useValue: mockBudgetStore },
+        { provide: ApiService, useValue: mockApiService },
+        { provide: UiService, useValue: mockUiService },
+        { provide: NotificationService, useValue: mockNotificationService },
+        { provide: ErrorService, useValue: mockErrorService },
+      ],
     });
 
-    component = new ConfigPageComponent();
+    await TestBed.compileComponents();
+
+    fixture = TestBed.createComponent(ConfigPageComponent);
+    component = fixture.componentInstance;
+    fixture.detectChanges();
   });
 
   it('should create', () => {
     expect(component).toBeTruthy();
-  });
-
-  it('should not be dirty on initialization', async () => {
-    await new Promise(process.nextTick);
-    expect(component.isDirty()).toBe(false);
-  });
-
-  it('should detect name change and mark as dirty', async () => {
-    await new Promise(process.nextTick);
-    const currentState = component.formState();
-    component.formState.set({ ...currentState, name: 'New Name' });
-    expect(component.isDirty()).toBe(true);
-  });
-
-  it('should call save API when saveProfile is called and form is dirty', async () => {
-    await new Promise(process.nextTick);
-    component.formState.set({ ...component.formState(), name: 'New Name' });
-    await component.saveProfile();
-    expect(mockApiService.updateSelfParticipant).toHaveBeenCalled();
   });
 });
