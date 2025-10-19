@@ -113,13 +113,12 @@ Resources:
       Port: !Ref NodePort
       Protocol: HTTP
       TargetType: ip
-      HealthCheck:
-        Protocol: HTTP
-        Path: '/'
-        IntervalSeconds: 30
-        TimeoutSeconds: 5
-        HealthyThresholdCount: 2
-        UnhealthyThresholdCount: 2
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: '/'
+      HealthCheckIntervalSeconds: 30
+      HealthCheckTimeoutSeconds: 5
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
 
   # ECS Cluster
   EcsCluster:

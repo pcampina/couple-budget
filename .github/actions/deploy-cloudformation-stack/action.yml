@@ -48,24 +48,14 @@ runs:
           echo "Stack $STACK_NAME status is $STACK_STATUS. No action needed."
         fi
 
-    - name: Deploy Stack (with capabilities)
-      if: ${{ inputs.capabilities != '' }}
+    - name: Deploy Stack
       uses: aws-actions/aws-cloudformation-github-deploy@v1
       with:
         name: ${{ inputs.stack-name }}
         template: ${{ inputs.template-file }}
         parameter-overrides: ${{ inputs.parameters }}
         no-fail-on-empty-changeset: "1"
-        capabilities: ${{ inputs.capabilities }}
-
-    - name: Deploy Stack (no capabilities)
-      if: ${{ inputs.capabilities == '' }}
-      uses: aws-actions/aws-cloudformation-github-deploy@v1
-      with:
-        name: ${{ inputs.stack-name }}
-        template: ${{ inputs.template-file }}
-        parameter-overrides: ${{ inputs.parameters }}
-        no-fail-on-empty-changeset: "1"
+        capabilities: ${{ inputs.capabilities }} # This is safe even if the input is empty
 
     - name: Dump CloudFormation events on failure
       if: failure()
