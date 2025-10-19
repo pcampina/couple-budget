@@ -25,7 +25,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy Certificates (Global - us-east-1)
-        uses: ./.github/actions/deploy-cfn-stack
+        uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-certificates-global
           template-file: infra/certificates-global.yaml
@@ -35,7 +35,7 @@ jobs:
           capabilities: CAPABILITY_IAM
 
       - name: Deploy Certificates (Regional - eu-central-1)
-        uses: ./.github/actions/deploy-cfn-stack
+        uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-certificates-regional
           template-file: infra/certificates-regional.yaml
@@ -45,7 +45,7 @@ jobs:
           capabilities: CAPABILITY_IAM
 
       - name: Deploy Network Stack
-        uses: ./.github/actions/deploy-cfn-stack
+        uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-network
           template-file: infra/network.yaml
@@ -53,7 +53,7 @@ jobs:
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy RDS Stack
-        uses: ./.github/actions/deploy-cfn-stack
+        uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-rds
           template-file: infra/rds-postgress.yaml
@@ -61,7 +61,7 @@ jobs:
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy Backend Stack
-        uses: ./.github/actions/deploy-cfn-stack
+        uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-backend
           template-file: infra/backend-fargate.yaml
@@ -69,7 +69,7 @@ jobs:
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy Frontend Stack
-        uses: ./.github/actions/deploy-cfn-stack
+        uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-frontend
           template-file: infra/frontend-s3-cloudfront.yaml
@@ -77,7 +77,7 @@ jobs:
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy DNS Stack
-        uses: ./.github/actions/deploy-cfn-stack
+        uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-dns
           template-file: infra/dns.yaml
