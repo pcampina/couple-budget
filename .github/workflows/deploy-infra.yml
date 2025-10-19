@@ -52,20 +52,20 @@ jobs:
           parameters: "ProjectName=${{ github.event.inputs.projectName }}"
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
-      - name: Deploy RDS Stack
-        uses: ./.github/actions/deploy-cloudformation-stack
-        with:
-          stack-name: ${{ github.event.inputs.projectName }}-rds
-          template-file: infra/rds-postgress.yaml
-          parameters: "ProjectName=${{ github.event.inputs.projectName }}"
-          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
-
       - name: Deploy Backend Stack
         uses: ./.github/actions/deploy-cloudformation-stack
         with:
           stack-name: ${{ github.event.inputs.projectName }}-backend
           template-file: infra/backend-fargate.yaml
           parameters: "ProjectName=${{ github.event.inputs.projectName }}" # O ARN do certificado será importado via Fn::ImportValue
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+
+      - name: Deploy RDS Stack
+        uses: ./.github/actions/deploy-cloudformation-stack
+        with:
+          stack-name: ${{ github.event.inputs.projectName }}-rds
+          template-file: infra/rds-postgress.yaml
+          parameters: "ProjectName=${{ github.event.inputs.projectName }}"
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy Frontend Stack
