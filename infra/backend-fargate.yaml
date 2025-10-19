@@ -1,0 +1,186 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Fargate backend for Node.js app with ALB, ECR, and CloudWatch Logs
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: angular-node-app
+  NodePort:
+    Type: Number
+    Default: 3000
+
+Resources:
+  # ECR Repository to store the Docker image
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub '${ProjectName}-api'
+      ImageScanningConfiguration:
+        ScanOnPush: true
+
+  # IAM Role for Fargate tasks to pull images and write logs
+  EcsTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal: { Service: [ecs-tasks.amazonaws.com] }
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  # Security Group for the Application Load Balancer
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP traffic to ALB
+      VpcId: !ImportValue
+        'Fn::Sub': '${ProjectName}:VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+
+  # Security Group for the Fargate Service
+  FargateServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic from ALB to Fargate tasks
+      VpcId: !ImportValue
+        'Fn::Sub': '${ProjectName}:VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref NodePort
+          ToPort: !Ref NodePort
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+
+  # Application Load Balancer
+  ApplicationLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub '${ProjectName}-alb'
+      Scheme: internet-facing
+      Subnets:
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PublicSubnetIdA' }
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PublicSubnetIdB' }
+      SecurityGroups:
+        - !Ref AlbSecurityGroup
+
+  # ALB Listener for HTTPS traffic
+  AlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 443
+      Protocol: HTTPS
+      Certificates:
+        - CertificateArn: !Ref BackendCertificateArn
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref EcsTargetGroup
+
+  # ALB Listener for HTTP to HTTPS redirect
+  HttpAlbListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: HTTPS
+            Port: '443'
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: HTTP_301
+
+  # Target Group for the ECS Service
+  EcsTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub '${ProjectName}-tg'
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      Port: !Ref NodePort
+      Protocol: HTTP
+      TargetType: ip
+      HealthCheck:
+        Protocol: HTTP
+        Path: '/'
+        IntervalSeconds: 30
+        TimeoutSeconds: 5
+        HealthyThresholdCount: 2
+        UnhealthyThresholdCount: 2
+
+  # ECS Cluster
+  EcsCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub '${ProjectName}-cluster'
+
+  # ECS Task Definition
+  EcsTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub '${ProjectName}-task'
+      RequiresCompatibilities: ["FARGATE"]
+      NetworkMode: awsvpc
+      Cpu: "256" # 0.25 vCPU
+      Memory: "512" # 0.5 GB
+      ExecutionRoleArn: !Ref EcsTaskExecutionRole
+      ContainerDefinitions:
+        - Name: !Sub '${ProjectName}-container'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepository}:${ImageTag}'
+          PortMappings:
+            - ContainerPort: !Ref NodePort
+          LogConfiguration:
+            LogDriver: awslogs
+            Options:
+              awslogs-group: !Ref LogGroup
+              awslogs-region: !Ref AWS::Region
+              awslogs-stream-prefix: ecs
+
+  # ECS Service
+  EcsService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub '${ProjectName}-service'
+      Cluster: !Ref EcsCluster
+      TaskDefinition: !Ref EcsTaskDefinition
+      DesiredCount: 1
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: DISABLED
+          Subnets:
+            - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdA' }
+            - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdB' }
+          SecurityGroups:
+            - !Ref FargateServiceSecurityGroup
+      LoadBalancers:
+        - TargetGroupArn: !Ref EcsTargetGroup
+          ContainerName: !Sub '${ProjectName}-container'
+          ContainerPort: !Ref NodePort
+
+  # CloudWatch Log Group
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/ecs/${ProjectName}'
+      RetentionInDays: 7
+
+Outputs:
+  ApiUrl:
+    Description: URL of the application API
+    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
+  EcrRepositoryUri:
+    Description: URI of the ECR repository
+    Value: !GetAtt EcrRepository.RepositoryUri
+  FargateServiceSecurityGroupId:
+    Value: !Ref FargateServiceSecurityGroup
+    Export:
+      Name: !Sub '${ProjectName}:FargateServiceSecurityGroupId'

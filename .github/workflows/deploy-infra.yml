@@ -1,0 +1,88 @@
+name: Deploy Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      hostedZoneId:
+        description: 'Route 53 Hosted Zone ID'
+        required: true
+        default: 'Z05678082RBZES6D13RG3'
+      projectName:
+        description: 'Project Name'
+        required: true
+        default: 'angular-node-app'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # Required for OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionRole # CHANGE THIS
+          aws-region: eu-central-1
+
+      - name: Deploy Certificates (Global - us-east-1)
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ github.event.inputs.projectName }}-certificates-global
+          template: infra/certificates-global.yaml
+          parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
+          region: us-east-1
+          no-fail-on-empty-changeset: "1"
+
+      - name: Deploy Certificates (Regional - eu-central-1)
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ github.event.inputs.projectName }}-certificates-regional
+          template: infra/certificates-regional.yaml
+          parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
+          region: eu-central-1
+          no-fail-on-empty-changeset: "1"
+
+      - name: Deploy Network Stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ github.event.inputs.projectName }}-network
+          template: infra/network.yaml
+          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }}"
+          no-fail-on-empty-changeset: "1"
+
+      - name: Deploy RDS Stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ github.event.inputs.projectName }}-rds
+          template: infra/rds-postgress.yaml
+          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }}"
+          no-fail-on-empty-changeset: "1"
+
+      - name: Deploy Backend Stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ github.event.inputs.projectName }}-backend
+          template: infra/backend-fargate.yaml
+          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }},BackendCertificateArn=${{ steps.deploy_certs_regional.outputs.CertificateArn }}"
+          no-fail-on-empty-changeset: "1"
+
+      - name: Deploy Frontend Stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ github.event.inputs.projectName }}-frontend
+          template: infra/frontend-s3-cloudfront.yaml
+          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }},FrontendCertificateArn=${{ steps.deploy_certs_global.outputs.CertificateArn }}"
+          no-fail-on-empty-changeset: "1"
+
+      - name: Deploy DNS Stack
+        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        with:
+          name: ${{ github.event.inputs.projectName }}-dns
+          template: infra/dns.yaml
+          parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
+          no-fail-on-empty-changeset: "1"

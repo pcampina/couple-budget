@@ -1,0 +1,140 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Network stack with VPC, public and private subnets (eu-central-1)
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: angular-node-app
+    Description: Project logical name used in tags and export names
+  VpcCidr:
+    Type: String
+    Default: 10.0.0.0/16
+  PublicSubnetCidrA:
+    Type: String
+    Default: 10.0.1.0/24
+  PublicSubnetCidrB:
+    Type: String
+    Default: 10.0.2.0/24
+  PrivateSubnetCidrA:
+    Type: String
+    Default: 10.0.11.0/24
+  PrivateSubnetCidrB:
+    Type: String
+    Default: 10.0.12.0/24
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCidr
+      EnableDnsHostnames: true
+      EnableDnsSupport: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc'
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-igw'
+
+  VPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: eu-central-1a
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref PublicSubnetCidrA
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-a'
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: eu-central-1b
+      MapPublicIpOnLaunch: true
+      CidrBlock: !Ref PublicSubnetCidrB
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-b'
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: eu-central-1a
+      MapPublicIpOnLaunch: false
+      CidrBlock: !Ref PrivateSubnetCidrA
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-a'
+
+  PrivateSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: eu-central-1b
+      MapPublicIpOnLaunch: false
+      CidrBlock: !Ref PrivateSubnetCidrB
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-b'
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-public-rt'
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicAssocA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetA
+      RouteTableId: !Ref PublicRouteTable
+
+  PublicAssocB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PublicSubnetB
+      RouteTableId: !Ref PublicRouteTable
+
+Outputs:
+  VpcId:
+    Value: !Ref VPC
+    Export:
+      Name: !Sub '${ProjectName}:VpcId'
+  PublicSubnetIdA:
+    Value: !Ref PublicSubnetA
+    Export:
+      Name: !Sub '${ProjectName}:PublicSubnetIdA'
+  PublicSubnetIdB:
+    Value: !Ref PublicSubnetB
+    Export:
+      Name: !Sub '${ProjectName}:PublicSubnetIdB'
+  PrivateSubnetIdA:
+    Value: !Ref PrivateSubnetA
+    Export:
+      Name: !Sub '${ProjectName}:PrivateSubnetIdA'
+  PrivateSubnetIdB:
+    Value: !Ref PrivateSubnetB
+    Export:
+      Name: !Sub '${ProjectName}:PrivateSubnetIdB'
