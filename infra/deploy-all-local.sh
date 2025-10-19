@@ -43,7 +43,7 @@ deploy_stack() {
     --no-fail-on-empty-changeset
 
   echo "Showing last events for ${stack_name}:"
-  aws cloudformation describe-stack-events --region "${region}" --stack-name "${stack_name}" --max-items 20 --output table || true
+  aws cloudformation describe-stack-events --region "${region}" --stack-name "${stack_name}" --max-items 20 --output json || true
 }
 
 # 1) Certificates Global (us-east-1)
@@ -56,7 +56,7 @@ echo "Attempting to read CertificateArn output for ${GLOBAL_STACK_NAME}..."
 GLOBAL_CERT_ARN=$(aws cloudformation describe-stacks --region "${REGION_GLOBAL}" --stack-name "${GLOBAL_STACK_NAME}" --query 'Stacks[0].Outputs[?OutputKey==`CertificateArn`].OutputValue' --output text || true)
 if [[ -z "${GLOBAL_CERT_ARN}" || "${GLOBAL_CERT_ARN}" == "None" ]]; then
   echo "Warning: CertificateArn not available yet for ${GLOBAL_STACK_NAME}. Check stack events and ACM validation (PENDING_VALIDATION)."
-  aws cloudformation describe-stack-events --region "${REGION_GLOBAL}" --stack-name "${GLOBAL_STACK_NAME}" --max-items 200 --output table || true
+  aws cloudformation describe-stack-events --region "${REGION_GLOBAL}" --stack-name "${GLOBAL_STACK_NAME}" --max-items 200 --output json || true
   echo "If the certificate is PENDING_VALIDATION, ensure the DNS CNAME was created in Route53 or create it manually."
 else
   echo "GLOBAL_CERT_ARN=${GLOBAL_CERT_ARN}"
@@ -71,7 +71,7 @@ deploy_stack "${REGION_REGIONAL}" "${CERT_REGIONAL_TEMPLATE}" "${REGIONAL_STACK_
 REGIONAL_CERT_ARN=$(aws cloudformation describe-stacks --region "${REGION_REGIONAL}" --stack-name "${REGIONAL_STACK_NAME}" --query 'Stacks[0].Outputs[?OutputKey==`CertificateArn`].OutputValue' --output text || true)
 if [[ -z "${REGIONAL_CERT_ARN}" || "${REGIONAL_CERT_ARN}" == "None" ]]; then
   echo "Warning: Regional CertificateArn not available yet for ${REGIONAL_STACK_NAME}. Check stack events and ACM validation."
-  aws cloudformation describe-stack-events --region "${REGION_REGIONAL}" --stack-name "${REGIONAL_STACK_NAME}" --max-items 200 --output table || true
+  aws cloudformation describe-stack-events --region "${REGION_REGIONAL}" --stack-name "${REGIONAL_STACK_NAME}" --max-items 200 --output json || true
 else
   echo "REGIONAL_CERT_ARN=${REGIONAL_CERT_ARN}"
 fi
@@ -82,23 +82,23 @@ NETWORK_TEMPLATE="network.yaml"
 
 deploy_stack "${REGION_REGIONAL}" "${NETWORK_TEMPLATE}" "${NETWORK_STACK_NAME}" "ProjectName=${PROJECT_NAME}"
 
-# 4) RDS
+# 4) Backend (creates SG for RDS)
+BACKEND_STACK_NAME="${PROJECT_NAME}-backend"
+BACKEND_TEMPLATE="backend-fargate.yaml"
+
+deploy_stack "${REGION_REGIONAL}" "${BACKEND_TEMPLATE}" "${BACKEND_STACK_NAME}" "ProjectName=${PROJECT_NAME}"
+
+# 5) RDS (depends on Backend SG)
 RDS_STACK_NAME="${PROJECT_NAME}-rds"
 RDS_TEMPLATE="rds-postgress.yaml"
 
 deploy_stack "${REGION_REGIONAL}" "${RDS_TEMPLATE}" "${RDS_STACK_NAME}" "ProjectName=${PROJECT_NAME}"
 
-# 5) Backend (uses regional cert)
-BACKEND_STACK_NAME="${PROJECT_NAME}-backend"
-BACKEND_TEMPLATE="backend-fargate.yaml"
-
-deploy_stack "${REGION_REGIONAL}" "${BACKEND_TEMPLATE}" "${BACKEND_STACK_NAME}" "ProjectName=${PROJECT_NAME}" "BackendCertificateArn=${REGIONAL_CERT_ARN}"
-
 # 6) Frontend (uses global cert)
 FRONTEND_STACK_NAME="${PROJECT_NAME}-frontend"
 FRONTEND_TEMPLATE="frontend-s3-cloudfront.yaml"
 
-deploy_stack "${REGION_REGIONAL}" "${FRONTEND_TEMPLATE}" "${FRONTEND_STACK_NAME}" "ProjectName=${PROJECT_NAME}" "FrontendCertificateArn=${GLOBAL_CERT_ARN}"
+deploy_stack "${REGION_REGIONAL}" "${FRONTEND_TEMPLATE}" "${FRONTEND_STACK_NAME}" "ProjectName=${PROJECT_NAME}"
 
 # 7) DNS
 DNS_STACK_NAME="${PROJECT_NAME}-dns"
@@ -108,7 +108,7 @@ deploy_stack "${REGION_REGIONAL}" "${DNS_TEMPLATE}" "${DNS_STACK_NAME}" "HostedZ
 
 
 echo "\nAll deploy commands submitted. If any stack failed or rolled back, inspect events with:"
-echo "  aws cloudformation describe-stack-events --region <region> --stack-name <stack-name> --max-items 200 --output table"
+echo "  aws cloudformation describe-stack-events --region <region> --stack-name <stack-name> --max-items 200 --output json"
 
 echo "Notes:"
 echo " - Certificates in us-east-1 (CloudFront) may require DNS validation; ensure Route53 records are created if CFN doesn't create them automatically."

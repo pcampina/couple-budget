@@ -15,134 +15,64 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # As permissões são necessárias para a action de 'configure-aws-credentials'
     permissions:
       id-token: write # Required for OIDC
       contents: read
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
-
-      - name: Configure AWS Credentials for us-east-1 (Global)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionRole # CHANGE THIS
-          aws-region: us-east-1
-
-      - name: Delete stack if in ROLLBACK_COMPLETE state (Global)
-        run: |
-          STACK_NAME=${{ github.event.inputs.projectName }}-certificates-global
-          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "STACK_NOT_FOUND")
-          if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
-            echo "Stack $STACK_NAME is in ROLLBACK_COMPLETE state. Deleting stack..."
-            aws cloudformation delete-stack --stack-name $STACK_NAME
-            aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
-            echo "Stack $STACK_NAME deleted."
-          elif [ "$STACK_STATUS" == "STACK_NOT_FOUND" ]; then
-            echo "Stack $STACK_NAME does not exist. No action needed."
-          else
-            echo "Stack $STACK_NAME status is $STACK_STATUS. No action needed."
-          fi
+        uses: actions/checkout@v4
 
       - name: Deploy Certificates (Global - us-east-1)
-        id: deploy_certs_global
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: ./.github/actions/deploy-cfn-stack
         with:
-          name: ${{ github.event.inputs.projectName }}-certificates-global
-          template: infra/certificates-global.yaml
-          parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
-          no-fail-on-empty-changeset: "1"
+          stack-name: ${{ github.event.inputs.projectName }}-certificates-global
+          template-file: infra/certificates-global.yaml
+          parameters: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
+          aws-region: us-east-1
           capabilities: CAPABILITY_IAM
-
-      - name: Configure AWS Credentials for eu-central-1 (Regional)
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionRole # CHANGE THIS
-          aws-region: eu-central-1
-
-      - name: Delete stack if in ROLLBACK_COMPLETE state (Regional)
-        run: |
-          STACK_NAME=${{ github.event.inputs.projectName }}-certificates-regional
-          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "STACK_NOT_FOUND")
-          if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
-            echo "Stack $STACK_NAME is in ROLLBACK_COMPLETE state. Deleting stack..."
-            aws cloudformation delete-stack --stack-name $STACK_NAME
-            aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
-            echo "Stack $STACK_NAME deleted."
-          elif [ "$STACK_STATUS" == "STACK_NOT_FOUND" ]; then
-            echo "Stack $STACK_NAME does not exist. No action needed."
-          else
-            echo "Stack $STACK_NAME status is $STACK_STATUS. No action needed."
-          fi
 
       - name: Deploy Certificates (Regional - eu-central-1)
-        id: deploy_certs_regional
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: ./.github/actions/deploy-cfn-stack
         with:
-          name: ${{ github.event.inputs.projectName }}-certificates-regional
-          template: infra/certificates-regional.yaml
-          parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
-          no-fail-on-empty-changeset: "1"
+          stack-name: ${{ github.event.inputs.projectName }}-certificates-regional
+          template-file: infra/certificates-regional.yaml
+          parameters: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
+          aws-region: eu-central-1
           capabilities: CAPABILITY_IAM
 
-      - name: Dump CloudFormation events for regional cert stack on failure
-        if: failure()
-        run: |
-          STACK_NAME=${{ github.event.inputs.projectName }}-certificates-regional
-          echo "=== Stack status ==="
-          aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text || true
-          echo "=== Last 50 events ==="
-          aws cloudformation describe-stack-events --stack-name $STACK_NAME --max-items 50 --output table || true
-          echo "=== Stack resources ==="
-          aws cloudformation list-stack-resources --stack-name $STACK_NAME --output table || true
-
       - name: Deploy Network Stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: ./.github/actions/deploy-cfn-stack
         with:
-          name: ${{ github.event.inputs.projectName }}-network
-          template: infra/network.yaml
-          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }}"
-          no-fail-on-empty-changeset: "1"
-
-      - name: Dump CloudFormation events for network stack on failure
-        if: failure()
-        run: |
-          STACK_NAME=${{ github.event.inputs.projectName }}-network
-          echo "=== Stack status ==="
-          aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text || true
-          echo "=== Last 100 events ==="
-          aws cloudformation describe-stack-events --stack-name $STACK_NAME --max-items 100 --output table || true
-          echo "=== Stack resources ==="
-          aws cloudformation list-stack-resources --stack-name $STACK_NAME --output table || true
+          stack-name: ${{ github.event.inputs.projectName }}-network
+          template-file: infra/network.yaml
+          parameters: "ProjectName=${{ github.event.inputs.projectName }}"
 
       - name: Deploy RDS Stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: ./.github/actions/deploy-cfn-stack
         with:
-          name: ${{ github.event.inputs.projectName }}-rds
-          template: infra/rds-postgress.yaml
-          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }}"
-          no-fail-on-empty-changeset: "1"
+          stack-name: ${{ github.event.inputs.projectName }}-rds
+          template-file: infra/rds-postgress.yaml
+          parameters: "ProjectName=${{ github.event.inputs.projectName }}"
 
       - name: Deploy Backend Stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: ./.github/actions/deploy-cfn-stack
         with:
-          name: ${{ github.event.inputs.projectName }}-backend
-          template: infra/backend-fargate.yaml
-          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }},BackendCertificateArn=${{ steps.deploy_certs_regional.outputs.CertificateArn }}"
-          no-fail-on-empty-changeset: "1"
+          stack-name: ${{ github.event.inputs.projectName }}-backend
+          template-file: infra/backend-fargate.yaml
+          parameters: "ProjectName=${{ github.event.inputs.projectName }}" # O ARN do certificado será importado via Fn::ImportValue
 
       - name: Deploy Frontend Stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: ./.github/actions/deploy-cfn-stack
         with:
-          name: ${{ github.event.inputs.projectName }}-frontend
-          template: infra/frontend-s3-cloudfront.yaml
-          parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }},FrontendCertificateArn=${{ steps.deploy_certs_global.outputs.CertificateArn }}"
-          no-fail-on-empty-changeset: "1"
+          stack-name: ${{ github.event.inputs.projectName }}-frontend
+          template-file: infra/frontend-s3-cloudfront.yaml
+          parameters: "ProjectName=${{ github.event.inputs.projectName }}" # O ARN do certificado será importado via Fn::ImportValue
 
       - name: Deploy DNS Stack
-        uses: aws-actions/aws-cloudformation-github-deploy@v1
+        uses: ./.github/actions/deploy-cfn-stack
         with:
-          name: ${{ github.event.inputs.projectName }}-dns
-          template: infra/dns.yaml
-          parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
-          no-fail-on-empty-changeset: "1"
+          stack-name: ${{ github.event.inputs.projectName }}-dns
+          template-file: infra/dns.yaml
+          parameters: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"

@@ -22,28 +22,14 @@ Resources:
       ValidationMethod: DNS
       DomainValidationOptions:
         - DomainName: !Ref BackendDomainName
-          # HostedZoneId is not a valid property for DomainValidationOptions.
-          # The DNS validation CNAME must be created as a Route53 Record using
-          # the certificate's DomainValidationOptions.ResourceRecord attributes.
+          HostedZoneId: !Ref HostedZoneId
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-backend-cert'
 
-  BackendCertificateValidationRecord:
-    Type: AWS::Route53::RecordSet
-    DependsOn: BackendCertificate
-    Properties:
-      HostedZoneId: !Ref HostedZoneId
-      # Use the resource record provided by Certificate domain validation
-      Name: !GetAtt BackendCertificate.DomainValidationOptions.0.ResourceRecord.Name
-      Type: !GetAtt BackendCertificate.DomainValidationOptions.0.ResourceRecord.Type
-      TTL: '300'
-      ResourceRecords:
-        - !GetAtt BackendCertificate.DomainValidationOptions.0.ResourceRecord.Value
-
 Outputs:
   CertificateArn:
-    Description: ARN of the ACM certificate for the backend API.
+    Description: "ARN of the regional ACM certificate"
     Value: !Ref BackendCertificate
     Export:
-      Name: !Sub '${ProjectName}:BackendCertificateArn'
+      Name: !Sub "${ProjectName}-RegionalCertificateArn"

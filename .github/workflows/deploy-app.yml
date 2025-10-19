@@ -40,9 +40,21 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
           echo "::set-output name=image::$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG"
 
-      - name: Force new ECS deployment
+      - name: Download task definition
         run: |
-          aws ecs update-service --cluster angular-node-app-cluster --service angular-node-app-service --force-new-deployment
+          aws ecs describe-task-definition --task-definition angular-node-app-task --query taskDefinition > task-definition.json
+
+      - name: Fill in the new image ID in the Amazon ECS task definition
+        id: task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: task-definition.json
+          container-name: angular-node-app-container
+          image: ${{ steps.build-image.outputs.image }}
+
+      - name: Deploy Amazon ECS task definition
+        run: |
+          aws ecs update-service --cluster angular-node-app-cluster --service angular-node-app-service --task-definition ${{ steps.task-def.outputs.task-definition }} --force-new-deployment
 
   deploy-frontend:
     runs-on: ubuntu-latest
