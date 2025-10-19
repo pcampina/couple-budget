@@ -59,6 +59,7 @@ jobs:
           template-file: infra/backend-fargate.yaml
           parameters: "ProjectName=${{ github.event.inputs.projectName }}" # O ARN do certificado será importado via Fn::ImportValue
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          capabilities: CAPABILITY_IAM
 
       - name: Deploy RDS Stack
         uses: ./.github/actions/deploy-cloudformation-stack
