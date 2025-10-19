@@ -31,6 +31,7 @@ jobs:
           template-file: infra/certificates-global.yaml
           parameters: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
           aws-region: us-east-1
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
           capabilities: CAPABILITY_IAM
 
       - name: Deploy Certificates (Regional - eu-central-1)
@@ -39,6 +40,7 @@ jobs:
           stack-name: ${{ github.event.inputs.projectName }}-certificates-regional
           template-file: infra/certificates-regional.yaml
           parameters: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
           aws-region: eu-central-1
           capabilities: CAPABILITY_IAM
 
@@ -48,6 +50,7 @@ jobs:
           stack-name: ${{ github.event.inputs.projectName }}-network
           template-file: infra/network.yaml
           parameters: "ProjectName=${{ github.event.inputs.projectName }}"
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy RDS Stack
         uses: ./.github/actions/deploy-cfn-stack
@@ -55,6 +58,7 @@ jobs:
           stack-name: ${{ github.event.inputs.projectName }}-rds
           template-file: infra/rds-postgress.yaml
           parameters: "ProjectName=${{ github.event.inputs.projectName }}"
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy Backend Stack
         uses: ./.github/actions/deploy-cfn-stack
@@ -62,6 +66,7 @@ jobs:
           stack-name: ${{ github.event.inputs.projectName }}-backend
           template-file: infra/backend-fargate.yaml
           parameters: "ProjectName=${{ github.event.inputs.projectName }}" # O ARN do certificado será importado via Fn::ImportValue
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy Frontend Stack
         uses: ./.github/actions/deploy-cfn-stack
@@ -69,6 +74,7 @@ jobs:
           stack-name: ${{ github.event.inputs.projectName }}-frontend
           template-file: infra/frontend-s3-cloudfront.yaml
           parameters: "ProjectName=${{ github.event.inputs.projectName }}" # O ARN do certificado será importado via Fn::ImportValue
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Deploy DNS Stack
         uses: ./.github/actions/deploy-cfn-stack
@@ -76,3 +82,4 @@ jobs:
           stack-name: ${{ github.event.inputs.projectName }}-dns
           template-file: infra/dns.yaml
           parameters: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}

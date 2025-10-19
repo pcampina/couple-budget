@@ -1,0 +1,65 @@
+name: 'Deploy CloudFormation Stack'
+description: 'Handles deploying a CloudFormation stack, including cleanup of ROLLBACK_COMPLETE state and error reporting'
+
+inputs:
+  stack-name:
+    description: 'Name of the CloudFormation stack'
+    required: true
+  template-file:
+    description: 'Path to the CloudFormation template'
+    required: true
+  parameters:
+    description: 'Stack parameters as a string (e.g., "Key1=Value1,Key2=Value2")'
+    required: false
+    default: ''
+  aws-region:
+    description: 'AWS region for the deployment'
+    required: false
+    default: 'eu-central-1'
+  capabilities:
+    description: 'Stack capabilities (e.g., CAPABILITY_IAM)'
+    required: false
+    default: ''
+  aws-account-id:
+    description: 'AWS Account ID for assuming the role'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - name: Configure AWS Credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: arn:aws:iam::${{ inputs.aws-account-id }}:role/GitHubActionRole
+        aws-region: ${{ inputs.aws-region }}
+
+    - name: Delete stack if in ROLLBACK_COMPLETE state
+      shell: bash
+      run: |
+        STACK_NAME=${{ inputs.stack-name }}
+        echo "Checking status for stack: $STACK_NAME in region: ${{ inputs.aws-region }}"
+        STACK_STATUS=$(aws cloudformation describe-stacks --stack-name "$STACK_NAME" --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "STACK_NOT_FOUND")
+        if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
+          echo "Stack $STACK_NAME is in ROLLBACK_COMPLETE state. Deleting stack..."
+          aws cloudformation delete-stack --stack-name "$STACK_NAME"
+          aws cloudformation wait stack-delete-complete --stack-name "$STACK_NAME"
+          echo "Stack $STACK_NAME deleted."
+        else
+          echo "Stack $STACK_NAME status is $STACK_STATUS. No action needed."
+        fi
+
+    - name: Deploy Stack
+      uses: aws-actions/aws-cloudformation-github-deploy@v1
+      with:
+        name: ${{ inputs.stack-name }}
+        template: ${{ inputs.template-file }}
+        parameter-overrides: ${{ inputs.parameters }}
+        no-fail-on-empty-changeset: "1"
+        capabilities: ${{ inputs.capabilities }}
+
+    - name: Dump CloudFormation events on failure
+      if: failure()
+      shell: bash
+      run: |
+        echo "::error::Deployment of stack ${{ inputs.stack-name }} failed. Dumping last 100 events..."
+        aws cloudformation describe-stack-events --stack-name "${{ inputs.stack-name }}" --max-items 100 --output table || true
