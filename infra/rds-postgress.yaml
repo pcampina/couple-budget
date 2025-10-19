@@ -1,0 +1,116 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RDS PostgreSQL in private subnets with password in Secrets Manager
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: angular-node-app
+  DBName:
+    Type: String
+    Default: appdb
+  DBInstanceClass:
+    Type: String
+    Default: db.t4g.micro
+    AllowedValues:
+      - db.t4g.micro
+      - db.t4g.small
+      - db.t3.micro
+      - db.t3.small
+  AllocatedStorage:
+    Type: Number
+    Default: 20
+  MaxAllocatedStorage:
+    Type: Number
+    Default: 100
+  EngineVersion:
+    Type: String
+    Default: '16.3'  # adjust when newer minor versions are available
+  MultiAZ:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+  MasterUsername:
+    Type: String
+    Default: dbadmin
+  PubliclyAccessible:
+    Type: String
+    Default: 'false'
+    AllowedValues: ['true', 'false']
+
+Resources:
+  DbPasswordSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub '${ProjectName}/rds/postgres/password'
+      Description: Master password for the PostgreSQL instance
+      GenerateSecretString:
+        SecretStringTemplate: !Sub '{"username":"${MasterUsername}"}'
+        GenerateStringKey: password
+        PasswordLength: 24
+        ExcludeCharacters: '"@/\'
+        ExcludePunctuation: true
+
+  DbSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: Private subnets for RDS
+      SubnetIds:
+        - !ImportValue
+          'Fn::Sub': '${ProjectName}:PrivateSubnetIdA'
+        - !ImportValue
+          'Fn::Sub': '${ProjectName}:PrivateSubnetIdB'
+      DBSubnetGroupName: !Sub '${ProjectName}-db-subnets'
+
+  DbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow PostgreSQL from Node.js security group
+      VpcId: !ImportValue
+        'Fn::Sub': '${ProjectName}:VpcId'
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !ImportValue
+            'Fn::Sub': '${ProjectName}:FargateServiceSecurityGroupId'
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-rds-sg'
+
+  PostgresInstance:
+    Type: AWS::RDS::DBInstance
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DBInstanceIdentifier: !Sub '${ProjectName}-postgres'
+      Engine: postgres
+      EngineVersion: !Ref EngineVersion
+      DBName: !Ref DBName
+      MasterUsername: !Ref MasterUsername
+      MasterUserPassword: !Sub '{{resolve:secretsmanager:${DbPasswordSecret}::password}}'
+      AllocatedStorage: !Ref AllocatedStorage
+      MaxAllocatedStorage: !Ref MaxAllocatedStorage
+      StorageType: gp3
+      PubliclyAccessible: !Ref PubliclyAccessible
+      DBSubnetGroupName: !Ref DbSubnetGroup
+      VPCSecurityGroups: [!Ref DbSecurityGroup]
+      MultiAZ: !Ref MultiAZ
+      AutoMinorVersionUpgrade: true
+      BackupRetentionPeriod: 7
+      DeletionProtection: true
+      CopyTagsToSnapshot: true
+
+Outputs:
+  DbEndpointAddress:
+    Value: !GetAtt PostgresInstance.Endpoint.Address
+    Description: PostgreSQL endpoint hostname
+  DbEndpointPort:
+    Value: !GetAtt PostgresInstance.Endpoint.Port
+  DbSecretArn:
+    Value: !Ref DbPasswordSecret
+    Description: Secrets Manager ARN holding {"username","password"}

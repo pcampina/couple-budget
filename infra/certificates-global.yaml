@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Creates an ACM certificate for the frontend domain.
+  IMPORTANT: This stack MUST be deployed in the us-east-1 region for CloudFront.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: angular-node-app
+  HostedZoneId:
+    Type: String
+    Description: The Route 53 Hosted Zone ID for the domain (e.g., Z0123456789ABCDEFGHIJ).
+  FrontendDomainName:
+    Type: String
+    Default: couplebudget.usee.today
+
+Resources:
+  FrontendCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref FrontendDomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref FrontendDomainName
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-frontend-cert'
+
+Outputs:
+  CertificateArn:
+    Description: ARN of the ACM certificate for the frontend.
+    Value: !Ref FrontendCertificate
+    Export:
+      Name: !Sub '${ProjectName}:FrontendCertificateArn'

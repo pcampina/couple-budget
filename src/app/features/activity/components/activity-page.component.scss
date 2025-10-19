@@ -1,15 +1,158 @@
-.activity-grid { display: grid; }
-/* Override global grid via CSS variable so row always fills 100% */
-.activity-grid.activity-grid--debug { --dt-cols: minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,1fr) minmax(0,2fr); }
-.activity-grid.activity-grid--base { --dt-cols: minmax(0,1.4fr) minmax(0,1fr) minmax(0,1fr) minmax(0,2fr); }
-.payload { white-space: pre-wrap; word-break: break-word; }
-.entity-type { font-weight: 600; margin-right: 6px; }
-.entity-id {
-  font-family: ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
-  font-size: 12px; padding: 2px 6px; border-radius: 6px;
-  background: color-mix(in srgb, var(--glass-bg) 100%, black 8%);
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; display: inline-block;
+@use '../../../../styles/mixins';
+@use '../../../../styles/tokens' as *;
+
+:host {
+  display: block;
+  padding: 2rem;
 }
-.payload-kv { display: flex; flex-wrap: wrap; gap: 12px; }
-.payload-kv .k { color: var(--clr-muted); font-weight: 600; }
-.payload-kv .v { }
+
+.activity-page {
+  @include mixins.glass(28px);
+  padding: 2rem;
+
+  &__title {
+    font-size: 2.5rem;
+    font-weight: 700;
+    margin-bottom: 2rem;
+    color: var(--clr-ink);
+    text-align: center;
+  }
+
+  &__api-disabled {
+    text-align: center;
+    color: var(--clr-muted);
+    font-size: 1.1rem;
+  }
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  &__header {
+    display: grid;
+    gap: 1rem;
+    padding: 1rem;
+    font-weight: 600;
+    color: var(--clr-muted);
+    border-bottom: 1px solid var(--glass-border);
+    align-items: center;
+  }
+
+  &__empty {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--clr-muted);
+    font-style: italic;
+  }
+}
+
+.activity-item {
+  display: grid;
+  gap: 1rem;
+  padding: 1.25rem 1rem;
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.05);
+  transition: background 0.3s ease;
+  border: 1px solid transparent;
+  align-items: center;
+
+  &:hover {
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border);
+  }
+
+  &__cell {
+    color: var(--clr-ink);
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  &__payload {
+    white-space: pre-wrap;
+    word-break: break-all;
+    background: rgba(0, 0, 0, 0.3);
+    padding: 0.75rem;
+    border-radius: 0.5rem;
+    font-family: monospace;
+    font-size: 0.875rem;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  &__value {
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  &__no-details {
+    color: var(--clr-muted);
+  }
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 2.5rem;
+  gap: 1rem;
+
+  &__page-number {
+    color: var(--clr-ink);
+    font-weight: 500;
+  }
+}
+
+[ngpButton] {
+  @include mixins.button-base;
+  border-radius: $radius-md;
+  border: 1px solid color-mix(in srgb, var(--clr-primary) 45%, var(--glass-border));
+  color: #fff;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--clr-primary) 45%, transparent) 0%,
+      color-mix(in srgb, var(--clr-primary) 35%, transparent) 100%),
+    var(--glass-bg);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 8px 24px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+
+  &:hover {
+    box-shadow: 0 10px 28px var(--glass-shadow), inset 0 1px 0 var(--glass-highlight);
+    background:
+      linear-gradient(180deg,
+        color-mix(in srgb, var(--clr-primary) 55%, transparent) 0%,
+        color-mix(in srgb, var(--clr-primary) 45%, transparent) 100%),
+      var(--glass-bg);
+  }
+
+  &:active {
+    transform: translateY(1px);
+    filter: saturate(110%);
+  }
+
+  &:focus-visible {
+    @include mixins.focus-ring;
+  }
+
+  &:disabled {
+    opacity: .6;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+// Grid layout for activity list
+.activity-list__header,
+.activity-item {
+  &.debug-mode {
+    grid-template-columns: 1.5fr 1fr 1fr 1fr 2fr;
+  }
+  &:not(.debug-mode) {
+    grid-template-columns: 1.5fr 1fr 1fr 2fr;
+  }
+}

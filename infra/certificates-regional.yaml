@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >
+  Creates an ACM certificate for the backend API domain.
+  This stack should be deployed in the primary region (e.g., eu-central-1).
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: angular-node-app
+  HostedZoneId:
+    Type: String
+    Description: The Route 53 Hosted Zone ID for the domain (e.g., Z0123456789ABCDEFGHIJ).
+  BackendDomainName:
+    Type: String
+    Default: api.couplebudget.usee.today
+
+Resources:
+  BackendCertificate:
+    Type: AWS::CertificateManager::Certificate
+    Properties:
+      DomainName: !Ref BackendDomainName
+      ValidationMethod: DNS
+      DomainValidationOptions:
+        - DomainName: !Ref BackendDomainName
+          HostedZoneId: !Ref HostedZoneId
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-backend-cert'
+
+Outputs:
+  CertificateArn:
+    Description: ARN of the ACM certificate for the backend API.
+    Value: !Ref BackendCertificate
+    Export:
+      Name: !Sub '${ProjectName}:BackendCertificateArn'

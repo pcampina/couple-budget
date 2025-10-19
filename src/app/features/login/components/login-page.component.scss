@@ -1,0 +1,23 @@
+.login-card {
+  margin: 2rem auto;
+
+  &__title {
+    margin-top: 0;
+  }
+
+  &__grid {
+    grid-template-columns: 1fr;
+  }
+
+  &__error {
+    margin-top: 1rem;
+  }
+
+  &__actions {
+    margin-top: 1.5rem;
+
+    .button {
+      width: 100%;
+    }
+  }
+}

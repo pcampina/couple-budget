@@ -1,29 +1,27 @@
-<section class="budget__section card card--glass">
+<section class="budget__section">
   <h2>Settings</h2>
 
-  <div class="card card--glass me-card">
-    <h3 class="me-title">Me</h3>
-    <div class="form-grid">
-      <label>
-        <span>Name</span>
-        <input class="input" type="text" [value]="meNameValue()" (input)="onMeNameInput($any($event.target).value)" />
-      </label>
-      <label>
-        <span>Email</span>
-        <input class="input" type="email" [value]="meEmailValue()" (input)="onMeEmailInput($any($event.target).value)" />
-      </label>
-    </div>
-  </div>
-
-  <div class="card card--glass me-card">
-    <label>
-      <span>Income (€)</span>
-      <input class="input input--num" type="number" step="0.01" [value]="meIncomeValue()" (input)="onMeIncomeInput($any($event.target).value)" />
-    </label>
-  </div>
-
-  <div class="actions">
-    <button class="button button--success" (click)="saveMe()" [disabled]="!isMeDirty()">Save</button>
+  <div class="card card--glass config-card">
+    <form (submit)="$event.preventDefault(); saveProfile()">
+      <div class="form-grid">
+        <label>
+          <span>Name</span>
+          <input ngpInput class="input" type="text" [(ngModel)]="formState().name" name="name" />
+        </label>
+        <label>
+          <span>Email</span>
+          <input ngpInput class="input" type="email" [(ngModel)]="formState().email" name="email" />
+        </label>
+      </div>
+      <div class="config-card__form-group">
+        <label>
+          <span>Income (€)</span>
+          <input ngpInput class="input" type="number" step="0.01" [(ngModel)]="formState().income" name="income" />
+        </label>
+      </div>
+      <div class="config-card__actions">
+        <button ngpButton class="button" type="submit" [disabled]="!isDirty()">Save Changes</button>
+      </div>
+    </form>
   </div>
 </section>
-

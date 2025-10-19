@@ -1,4 +1,12 @@
-.me-card { margin: 12px 0 18px; }
-.me-title { margin-top: 0; }
-.actions { margin-top: 10px; display: flex; gap: 8px; }
+.config-card {
+  margin-top: 1rem;
 
+  &__form-group {
+    margin-top: 1rem;
+  }
+
+  &__actions {
+    margin-top: 1.5rem;
+    text-align: right;
+  }
+}
