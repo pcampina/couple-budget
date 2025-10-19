@@ -85,6 +85,17 @@ jobs:
           no-fail-on-empty-changeset: "1"
           capabilities: CAPABILITY_IAM
 
+      - name: Dump CloudFormation events for regional cert stack on failure
+        if: failure()
+        run: |
+          STACK_NAME=${{ github.event.inputs.projectName }}-certificates-regional
+          echo "=== Stack status ==="
+          aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text || true
+          echo "=== Last 50 events ==="
+          aws cloudformation describe-stack-events --stack-name $STACK_NAME --max-items 50 --output table || true
+          echo "=== Stack resources ==="
+          aws cloudformation list-stack-resources --stack-name $STACK_NAME --output table || true
+
       - name: Deploy Network Stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
@@ -92,6 +103,17 @@ jobs:
           template: infra/network.yaml
           parameter-overrides: "ProjectName=${{ github.event.inputs.projectName }}"
           no-fail-on-empty-changeset: "1"
+
+      - name: Dump CloudFormation events for network stack on failure
+        if: failure()
+        run: |
+          STACK_NAME=${{ github.event.inputs.projectName }}-network
+          echo "=== Stack status ==="
+          aws cloudformation describe-stacks --stack-name $STACK_NAME --query 'Stacks[0].StackStatus' --output text || true
+          echo "=== Last 100 events ==="
+          aws cloudformation describe-stack-events --stack-name $STACK_NAME --max-items 100 --output table || true
+          echo "=== Stack resources ==="
+          aws cloudformation list-stack-resources --stack-name $STACK_NAME --output table || true
 
       - name: Deploy RDS Stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1

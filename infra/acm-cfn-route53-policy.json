@@ -1,0 +1,51 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowCloudFormationActions",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:CreateStack",
+        "cloudformation:UpdateStack",
+        "cloudformation:DeleteStack",
+        "cloudformation:DescribeStacks",
+        "cloudformation:DescribeStackEvents",
+        "cloudformation:DescribeStackResources",
+        "cloudformation:CreateChangeSet",
+        "cloudformation:ExecuteChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:ListStacks",
+        "cloudformation:ListStackResources"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowACM",
+      "Effect": "Allow",
+      "Action": [
+        "acm:RequestCertificate",
+        "acm:DescribeCertificate",
+        "acm:ListCertificates",
+        "acm:GetCertificate",
+        "acm:ListTagsForCertificate",
+        "acm:DeleteCertificate"
+      ],
+      "Resource": "arn:aws:acm:us-east-1:447555627930:certificate/*"
+    },
+    {
+      "Sid": "AllowRoute53HostedZoneChanges",
+      "Effect": "Allow",
+      "Action": [
+        "route53:ChangeResourceRecordSets",
+        "route53:GetChange",
+        "route53:ListResourceRecordSets",
+        "route53:GetHostedZone",
+        "route53:ListHostedZones"
+      ],
+      "Resource": [
+        "arn:aws:route53:::hostedzone/Z05678082RBZES6D13RG3",
+        "*"
+      ]
+    }
+  ]
+}
