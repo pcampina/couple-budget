@@ -23,28 +23,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Configure AWS Credentials
+      - name: Configure AWS Credentials for us-east-1 (Global)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionRole # CHANGE THIS
-          aws-region: eu-central-1
+          aws-region: us-east-1
 
       - name: Deploy Certificates (Global - us-east-1)
+        id: deploy_certs_global
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: ${{ github.event.inputs.projectName }}-certificates-global
           template: infra/certificates-global.yaml
           parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
-          region: us-east-1
           no-fail-on-empty-changeset: "1"
 
+      - name: Configure AWS Credentials for eu-central-1 (Regional)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionRole # CHANGE THIS
+          aws-region: eu-central-1
+
       - name: Deploy Certificates (Regional - eu-central-1)
+        id: deploy_certs_regional
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: ${{ github.event.inputs.projectName }}-certificates-regional
           template: infra/certificates-regional.yaml
           parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
-          region: eu-central-1
           no-fail-on-empty-changeset: "1"
 
       - name: Deploy Network Stack
