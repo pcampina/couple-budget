@@ -29,6 +29,21 @@ jobs:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionRole # CHANGE THIS
           aws-region: us-east-1
 
+      - name: Delete stack if in ROLLBACK_COMPLETE state (Global)
+        run: |
+          STACK_NAME=${{ github.event.inputs.projectName }}-certificates-global
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "STACK_NOT_FOUND")
+          if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
+            echo "Stack $STACK_NAME is in ROLLBACK_COMPLETE state. Deleting stack..."
+            aws cloudformation delete-stack --stack-name $STACK_NAME
+            aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
+            echo "Stack $STACK_NAME deleted."
+          elif [ "$STACK_STATUS" == "STACK_NOT_FOUND" ]; then
+            echo "Stack $STACK_NAME does not exist. No action needed."
+          else
+            echo "Stack $STACK_NAME status is $STACK_STATUS. No action needed."
+          fi
+
       - name: Deploy Certificates (Global - us-east-1)
         id: deploy_certs_global
         uses: aws-actions/aws-cloudformation-github-deploy@v1
@@ -37,12 +52,28 @@ jobs:
           template: infra/certificates-global.yaml
           parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
           no-fail-on-empty-changeset: "1"
+          capabilities: CAPABILITY_IAM
 
       - name: Configure AWS Credentials for eu-central-1 (Regional)
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GitHubActionRole # CHANGE THIS
           aws-region: eu-central-1
+
+      - name: Delete stack if in ROLLBACK_COMPLETE state (Regional)
+        run: |
+          STACK_NAME=${{ github.event.inputs.projectName }}-certificates-regional
+          STACK_STATUS=$(aws cloudformation describe-stacks --stack-name $STACK_NAME --query "Stacks[0].StackStatus" --output text 2>/dev/null || echo "STACK_NOT_FOUND")
+          if [ "$STACK_STATUS" == "ROLLBACK_COMPLETE" ]; then
+            echo "Stack $STACK_NAME is in ROLLBACK_COMPLETE state. Deleting stack..."
+            aws cloudformation delete-stack --stack-name $STACK_NAME
+            aws cloudformation wait stack-delete-complete --stack-name $STACK_NAME
+            echo "Stack $STACK_NAME deleted."
+          elif [ "$STACK_STATUS" == "STACK_NOT_FOUND" ]; then
+            echo "Stack $STACK_NAME does not exist. No action needed."
+          else
+            echo "Stack $STACK_NAME status is $STACK_STATUS. No action needed."
+          fi
 
       - name: Deploy Certificates (Regional - eu-central-1)
         id: deploy_certs_regional
@@ -52,6 +83,7 @@ jobs:
           template: infra/certificates-regional.yaml
           parameter-overrides: "HostedZoneId=${{ github.event.inputs.hostedZoneId }},ProjectName=${{ github.event.inputs.projectName }}"
           no-fail-on-empty-changeset: "1"
+          capabilities: CAPABILITY_IAM
 
       - name: Deploy Network Stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1

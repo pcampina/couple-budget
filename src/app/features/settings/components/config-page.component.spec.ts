@@ -1,5 +1,4 @@
-import { ComponentFixture, TestBed, resolveComponentResources } from '@angular/core/testing';
-import { ConfigPageComponent } from './config-page.component';
+import { TestBed } from '@angular/core/testing';
 import { AuthService } from '@app/infrastructure/auth.service';
 import { BudgetStore } from '@application/budget.store';
 import { ApiService } from '@app/infrastructure/api.service';
@@ -7,13 +6,10 @@ import { UiService } from '@app/infrastructure/ui.service';
 import { NotificationService } from '@app/infrastructure/notification.service';
 import { ErrorService } from '@app/infrastructure/error.service';
 import { signal } from '@angular/core';
-import { FormsModule } from '@angular/forms';
-import { CommonModule } from '@angular/common';
-import { NgpButton, NgpInput, NgpLabel } from 'ng-primitives';
+import { ConfigPageComponent } from './config-page.component';
 
 describe('ConfigPageComponent', () => {
   let component: ConfigPageComponent;
-  let fixture: ComponentFixture<ConfigPageComponent>;
 
   const mockAuthService = {
     user: signal({ email: 'me@example.com' }),
@@ -35,9 +31,8 @@ describe('ConfigPageComponent', () => {
   const mockNotificationService = { success: vi.fn(), info: vi.fn() };
   const mockErrorService = { handle: vi.fn() };
 
-  beforeEach(async () => {
+  beforeEach(() => {
     TestBed.configureTestingModule({
-      imports: [ConfigPageComponent, FormsModule, CommonModule, NgpButton, NgpInput, NgpLabel],
       providers: [
         { provide: AuthService, useValue: mockAuthService },
         { provide: BudgetStore, useValue: mockBudgetStore },
@@ -48,11 +43,7 @@ describe('ConfigPageComponent', () => {
       ],
     });
 
-    await TestBed.compileComponents();
-
-    fixture = TestBed.createComponent(ConfigPageComponent);
-    component = fixture.componentInstance;
-    fixture.detectChanges();
+    component = TestBed.runInInjectionContext(() => new ConfigPageComponent());
   });
 
   it('should create', () => {

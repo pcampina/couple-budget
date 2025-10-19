@@ -2,15 +2,10 @@
 
 [![CI](https://github.com/pcampina/couple-budget/actions/workflows/ci.yml/badge.svg)](https://github.com/pcampina/couple-budget/actions/workflows/ci.yml)
 
-## Demo
-
-- Live: https://couplebudget.netlify.app/
-  - Deployed automatically via Netlify after merges to `main`.
-
 ## Hosting
 
-- **Frontend** — Netlify (`netlify.toml`) builds the Angular app with `ng build` and serves the static assets from `dist/couple-budget/browser`.
-- **API** — Render (`render.yaml`) provisions a free Postgres instance and deploys the Node API. The service runs `npm run build:api` during build and starts with `npm run db:migrate && node dist-api/server.js`. Custom environment values (such as `PUBLIC_APP_URL`) can be provided via the Render dashboard.
+- **Frontend** — Deployed to an AWS S3 bucket and served via CloudFront for global content delivery. The infrastructure is managed by CloudFormation (`infra/frontend-s3-cloudfront.yaml`).
+- **API** — A Dockerized Node.js application running on AWS Fargate, managed by an ECS service. It connects to a Postgres database hosted on RDS. The infrastructure is managed by CloudFormation (`infra/backend-fargate.yaml`, `infra/rds-postgress.yaml`).
 
 This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.1.
 
@@ -190,7 +185,7 @@ Angular CLI does not come with an end-to-end testing framework by default. You c
 ## Security
 
 - See `SECURITY.md` for reporting guidelines.
-- CI builds and Netlify deploys do not embed secrets; runtime config is generated without sensitive values.
+- CI builds and AWS deployments do not embed secrets; runtime config is generated without sensitive values.
 
 ## Contributing
 

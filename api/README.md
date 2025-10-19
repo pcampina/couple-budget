@@ -17,7 +17,7 @@ Roles & permissions
 
 ```bash
 cp .env.example .env
-# set AUTH_JWT_SECRET and SUPABASE_DB_URL if using Postgres
+# set required environment variables
 npm run db:migrate
 npm run api   # http://localhost:3333
 ```
@@ -62,7 +62,6 @@ docker compose up -d
 ## Env vars
 - `PORT` — API port (default: 3333)
 - `AUTH_JWT_SECRET` — JWT secret for HS256
-- `SUPABASE_DB_URL` — Postgres connection string
 
 ## Examples
 ```bash

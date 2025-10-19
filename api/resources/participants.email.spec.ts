@@ -5,6 +5,7 @@ import supertest from 'supertest';
 import { localRequest } from '../test-utils';
 
 delete process.env.AUTH_JWT_SECRET;
+process.env.NO_LISTEN = '1';
 
 describe('participants email uniqueness', () => {
   const handler = createApp();
@@ -19,4 +20,3 @@ describe('participants email uniqueness', () => {
     expect(status).toBe(409);
   });
 });
-
