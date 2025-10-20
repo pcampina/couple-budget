@@ -22,7 +22,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Deploy Certificates (Global - us-east-1)
         uses: ./.github/actions/deploy-cloudformation-stack
