@@ -117,6 +117,34 @@ Resources:
       SubnetId: !Ref PublicSubnetB
       RouteTableId: !Ref PublicRouteTable
 
+  PrivateRouteTableA:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-rt-a'
+
+  PrivateRouteTableB:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-private-rt-b'
+
+  PrivateAssocA:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetA
+      RouteTableId: !Ref PrivateRouteTableA
+
+  PrivateAssocB:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      SubnetId: !Ref PrivateSubnetB
+      RouteTableId: !Ref PrivateRouteTableB
+
 Outputs:
   VpcId:
     Value: !Ref VPC
@@ -138,3 +166,7 @@ Outputs:
     Value: !Ref PrivateSubnetB
     Export:
       Name: !Sub '${ProjectName}:PrivateSubnetIdB'
+  PrivateRouteTableIds:
+    Value: !Join [',', [!Ref PrivateRouteTableA, !Ref PrivateRouteTableB]]
+    Export:
+      Name: !Sub '${ProjectName}:PrivateRouteTableIds'

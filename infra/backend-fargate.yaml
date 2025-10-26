@@ -14,14 +14,6 @@ Parameters:
     Default: latest
 
 Resources:
-  # ECR Repository to store the Docker image
-  EcrRepository:
-    Type: AWS::ECR::Repository
-    Properties:
-      RepositoryName: !Sub '${ProjectName}-api'
-      ImageScanningConfiguration:
-        ScanOnPush: true
-
   # IAM Role for Fargate tasks to pull images and write logs
   EcsTaskExecutionRole:
     Type: AWS::IAM::Role
@@ -138,7 +130,7 @@ Resources:
       ExecutionRoleArn: !Ref EcsTaskExecutionRole
       ContainerDefinitions:
         - Name: !Sub '${ProjectName}-container'
-          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${EcrRepository}:${ImageTag}'
+          Image: !Sub '${AWS::AccountId}.dkr.ecr.${AWS::Region}.amazonaws.com/${ProjectName}-api:${ImageTag}'
           PortMappings:
             - ContainerPort: !Ref NodePort
           LogConfiguration:
@@ -151,6 +143,8 @@ Resources:
   # ECS Service
   EcsService:
     Type: AWS::ECS::Service
+    DependsOn:
+      - AlbListener
     Properties:
       ServiceName: !Sub '${ProjectName}-service'
       Cluster: !Ref EcsCluster
@@ -177,13 +171,60 @@ Resources:
       LogGroupName: !Sub '/ecs/${ProjectName}'
       RetentionInDays: 7
 
+  # Security Group for VPC Endpoints (ECR, CloudWatch Logs)
+  VpcEndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security Group for VPC Endpoints (ECR, CloudWatch Logs)
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      SecurityGroupIngress:
+        # Allow Fargate tasks to connect to VPC Endpoints on 443
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          SourceSecurityGroupId: !Ref FargateServiceSecurityGroup
+      Tags:
+        - Key: Name
+          Value: !Sub '${ProjectName}-vpc-endpoint-sg'
+
+  # VPC Endpoint for ECR API - Allows Fargate to pull images without public internet
+  EcrApiVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.api'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdA' }
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdB' }
+      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+      PrivateDnsEnabled: true
+
+  # VPC Endpoint for ECR DKR - Allows Fargate to pull images without public internet
+  EcrDkrVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.ecr.dkr'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdA' }
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdB' }
+      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+      PrivateDnsEnabled: true
+
+  # VPC Endpoint for S3 Gateway - Required by ECR DKR endpoint
+  S3GatewayVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
+      RouteTableIds: !Split [',', { 'Fn::ImportValue': !Sub '${ProjectName}:PrivateRouteTableIds' }]
+
 Outputs:
   ApiUrl:
     Description: URL of the application API
-    Value: !Sub 'http://${ApplicationLoadBalancer.DNSName}'
-  EcrRepositoryUri:
-    Description: URI of the ECR repository
-    Value: !GetAtt EcrRepository.RepositoryUri
+    Value: !Sub 'https://${ApplicationLoadBalancer.DNSName}'
   FargateServiceSecurityGroupId:
     Value: !Ref FargateServiceSecurityGroup
     Export:

@@ -5,6 +5,12 @@ Parameters:
   ProjectName:
     Type: String
     Default: angular-node-app
+  FrontendCertificateArn:
+    Type: String
+    Description: ARN of the ACM certificate for CloudFront (must be in us-east-1).
+  FrontendDomainName:
+    Type: String
+    Default: couplebudget.usee.today
 
 Resources:
   FrontendBucket:
@@ -37,7 +43,7 @@ Resources:
       DistributionConfig:
         Aliases:
           - !Ref FrontendDomainName
-        ViewerCertificate:
+        ViewerCertificate: # Must be in us-east-1
           AcmCertificateArn: !Ref FrontendCertificateArn
           SslSupportMethod: sni-only
           MinimumProtocolVersion: TLSv1.2_2021
@@ -87,3 +93,5 @@ Outputs:
   FrontendDomain:
     Value: !GetAtt FrontendDistribution.DomainName
     Description: CloudFront domain to serve the Angular app
+    Export:
+      Name: !Sub '${ProjectName}:FrontendDistributionDomainName'
