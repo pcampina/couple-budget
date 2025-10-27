@@ -1,7 +1,7 @@
 import type { Knex } from 'knex';
 
 export async function up(knex: Knex): Promise<void> {
-  await knex.schema.createTable('budgets', (t) => {
+  await knex.schema.createTable('budgets', (t: Knex.TableBuilder) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.string('name').notNullable().defaultTo('Default');
     t.string('owner_user_id').notNullable().index();
@@ -9,7 +9,7 @@ export async function up(knex: Knex): Promise<void> {
     t.timestamp('updated_at').notNullable().defaultTo(knex.fn.now());
   });
 
-  await knex.schema.createTable('participants', (t) => {
+  await knex.schema.createTable('participants', (t: Knex.TableBuilder) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.uuid('budget_id').notNullable().references('id').inTable('budgets').onDelete('CASCADE');
     t.string('name').notNullable();
@@ -17,7 +17,7 @@ export async function up(knex: Knex): Promise<void> {
     t.decimal('income', 14, 2).notNullable().defaultTo(0);
   });
 
-  await knex.schema.createTable('expenses', (t) => {
+  await knex.schema.createTable('expenses', (t: Knex.TableBuilder) => {
     t.uuid('id').primary().defaultTo(knex.raw('gen_random_uuid()'));
     t.uuid('budget_id').notNullable().references('id').inTable('budgets').onDelete('CASCADE');
     t.string('name').notNullable();
@@ -32,4 +32,3 @@ export async function down(knex: Knex): Promise<void> {
   await knex.schema.dropTableIfExists('participants');
   await knex.schema.dropTableIfExists('budgets');
 }
-

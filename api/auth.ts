@@ -77,7 +77,7 @@ export function withAuth(
     params: Record<string, string> = {},
     search: URLSearchParams = new URLSearchParams()
   ) => {
-    const secret = process.env.AUTH_JWT_SECRET; // JWT secret
+    const secret = process.env['AUTH_JWT_SECRET']; // JWT secret
     if (!secret) {
       // Dev mode: try to parse token payload without verifying, so downstream has user info
       try {

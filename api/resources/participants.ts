@@ -79,18 +79,18 @@ export function registerParticipants(router: Router): void {
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
     if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
-    const updated = await repo.updateParticipant(budgetId, params.id, {
+    const updated = await repo.updateParticipant(budgetId, params['id'], {
       ...(body.name != null ? { name: String(body.name).trim() } : {}),
       ...(body.email != null ? { email: String(body.email).trim().toLowerCase() } : {}),
       ...(body.income != null ? { income: Math.max(0, Number(body.income) || 0) } : {}),
     });
     try {
       if (body.income != null) {
-        await repo.recordIncomeChange?.(params.id, Math.max(0, Number(body.income) || 0), new Date().toISOString());
+        await repo.recordIncomeChange?.(params['id'], Math.max(0, Number(body.income) || 0), new Date().toISOString());
       }
     } catch {}
     if (!updated) return send(res, 404, { error: 'Not found' });
-    try { await repo.logActivity(userId, budgetId, 'update-participant', 'participant', params.id, body); } catch {}
+    try { await repo.logActivity(userId, budgetId, 'update-participant', 'participant', params['id'], body); } catch {}
     return send(res, 200, updated);
   }));
 
@@ -102,8 +102,8 @@ export function registerParticipants(router: Router): void {
     const defaultBudgetId = await repo.getOrCreateDefaultBudgetId(userId);
     const budgetId = qGroup || defaultBudgetId;
     if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
-    await repo.deleteParticipant?.(budgetId, params.id);
-    try { await repo.logActivity(userId, budgetId, 'delete-participant', 'participant', params.id, {}); } catch {}
+    await repo.deleteParticipant?.(budgetId, params['id']);
+    try { await repo.logActivity(userId, budgetId, 'delete-participant', 'participant', params['id'], {}); } catch {}
     return send(res, 204);
   }));
 

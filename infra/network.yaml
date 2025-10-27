@@ -145,6 +145,34 @@ Resources:
       SubnetId: !Ref PrivateSubnetB
       RouteTableId: !Ref PrivateRouteTableB
 
+  # Security Group for the Application Load Balancer
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow HTTP/HTTPS traffic to ALB
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: 0.0.0.0/0
+
+  # Security Group for the Fargate Service
+  FargateServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow traffic from ALB to Fargate tasks
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3333 # Default NodePort
+          ToPort: 3333
+          SourceSecurityGroupId: !Ref AlbSecurityGroup
+
 Outputs:
   VpcId:
     Value: !Ref VPC
@@ -170,3 +198,11 @@ Outputs:
     Value: !Join [',', [!Ref PrivateRouteTableA, !Ref PrivateRouteTableB]]
     Export:
       Name: !Sub '${ProjectName}:PrivateRouteTableIds'
+  AlbSecurityGroupId:
+    Value: !Ref AlbSecurityGroup
+    Export:
+      Name: !Sub '${ProjectName}:AlbSecurityGroupId'
+  FargateServiceSecurityGroupId:
+    Value: !Ref FargateServiceSecurityGroup
+    Export:
+      Name: !Sub '${ProjectName}:FargateServiceSecurityGroupId'

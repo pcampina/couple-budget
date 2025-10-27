@@ -11,6 +11,10 @@ on:
         description: 'Project Name'
         required: true
         default: 'angular-node-app'
+      imageTag:
+        description: 'Container image tag to deploy on the backend stack'
+        required: true
+        default: 'latest'
 
 jobs:
   deploy:
@@ -52,14 +56,13 @@ jobs:
           parameters: "ProjectName=${{ github.event.inputs.projectName }}"
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
 
-      - name: Deploy Backend Stack
+      - name: Deploy ECR Stack
         uses: ./.github/actions/deploy-cloudformation-stack
         with:
-          stack-name: ${{ github.event.inputs.projectName }}-backend
-          template-file: infra/backend-fargate.yaml
-          parameters: "ProjectName=${{ github.event.inputs.projectName }}" # O ARN do certificado será importado via Fn::ImportValue
+          stack-name: ${{ github.event.inputs.projectName }}-ecr
+          template-file: infra/ecr.yaml
+          parameters: "ProjectName=${{ github.event.inputs.projectName }}"
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
-          capabilities: CAPABILITY_IAM
 
       - name: Deploy RDS Stack
         uses: ./.github/actions/deploy-cloudformation-stack
@@ -68,6 +71,15 @@ jobs:
           template-file: infra/rds-postgress.yaml
           parameters: "ProjectName=${{ github.event.inputs.projectName }}"
           aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+
+      - name: Deploy Backend Stack
+        uses: ./.github/actions/deploy-cloudformation-stack
+        with:
+          stack-name: ${{ github.event.inputs.projectName }}-backend
+          template-file: infra/backend-fargate.yaml
+          parameters: "ProjectName=${{ github.event.inputs.projectName }},ImageTag=${{ github.event.inputs.imageTag }}" # O ARN do certificado será importado via Fn::ImportValue
+          aws-account-id: ${{ secrets.AWS_ACCOUNT_ID }}
+          capabilities: CAPABILITY_IAM
 
       - name: Deploy Frontend Stack
         uses: ./.github/actions/deploy-cloudformation-stack

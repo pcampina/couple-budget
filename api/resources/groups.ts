@@ -33,11 +33,11 @@ export function registerGroups(router: Router): void {
   router.add('DELETE', '/groups/:id/members/:participantId', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (!isOwner) return send(res, 403, { error: 'Only the owner can remove members' });
     // Find participant details
-    const participants = await repo.listParticipants?.(params.id) || [];
-    const p = (participants as DbParticipant[]).find((x) => x.id === params.participantId);
+    const participants = await repo.listParticipants?.(params['id']) || [];
+    const p = (participants as DbParticipant[]).find((x) => x.id === params['participantId']);
     if (!p) return send(res, 404, { error: 'Participant not found' });
     // Do not allow removing the owner via this endpoint
     if (p.user_id && String(p.user_id) === String(userId)) {
@@ -45,11 +45,11 @@ export function registerGroups(router: Router): void {
     }
     // Remove membership if there is a linked user
     if (p.user_id && repo.removeMember) {
-      try { await repo.removeMember(params.id, p.user_id); } catch {}
+      try { await repo.removeMember(params['id'], p.user_id); } catch {}
     }
     // Also remove participant entry for cleanliness
     if (repo.deleteParticipant) {
-      try { await repo.deleteParticipant(params.id, params.participantId); } catch {}
+      try { await repo.deleteParticipant(params['id'], params['participantId']); } catch {}
     }
     return send(res, 204);
   }));
@@ -59,17 +59,17 @@ export function registerGroups(router: Router): void {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
     // Owner cannot leave; suggest deleting group
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (isOwner) return send(res, 400, { error: 'Owner cannot leave the group; delete it instead.' });
     // Remove membership
     if (repo.removeMember) {
-      try { await repo.removeMember(params.id, userId); } catch {}
+      try { await repo.removeMember(params['id'], userId); } catch {}
     }
     // Remove own participant record if exists
     try {
-      const participants: DbParticipant[] = (await repo.listParticipants?.(params.id)) ?? [];
+      const participants: DbParticipant[] = (await repo.listParticipants?.(params['id'])) ?? [];
       const p = participants.find((x) => String(x.user_id || '') === String(userId));
-      if (p && repo.deleteParticipant) await repo.deleteParticipant(params.id, p.id);
+      if (p && repo.deleteParticipant) await repo.deleteParticipant(params['id'], p.id);
     } catch {}
     return send(res, 204);
   }));
@@ -105,19 +105,19 @@ export function registerGroups(router: Router): void {
   router.add('POST', '/groups/:id/invites', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (!isOwner) return send(res, 403, { error: 'Only the owner can invite members' });
     const body = await readJson<{ emails?: string[] }>(req).catch(() => ({ emails: [] as string[] }));
     const emails = Array.from(new Set((body.emails || []).map(e => String(e).trim().toLowerCase()).filter(Boolean)));
     if (emails.length === 0) return send(res, 400, { error: 'Provide at least one email' });
-    const invites: Invite[] = (await repo.createInvites?.(params.id, userId, emails)) ?? [];
+    const invites: Invite[] = (await repo.createInvites?.(params['id'], userId, emails)) ?? [];
     // Email invites (best effort) using Mailhog
-    const appUrl = process.env.PUBLIC_APP_URL || `http://${req.headers.host || 'localhost:4200'}`;
+    const appUrl = process.env['PUBLIC_APP_URL'] || `http://${req.headers.host || 'localhost:4200'}`;
     // Fetch group name (optional, best effort)
     let groupName = 'Group';
     try {
       const groupsList = (await repo.listUserBudgets?.(userId)) ?? [];
-      const g = groupsList.find((x) => x.id === params.id);
+      const g = groupsList.find((x) => x.id === params['id']);
       if (g?.name) groupName = g.name;
     } catch {}
     let inviterEmail = '';
@@ -135,9 +135,9 @@ export function registerGroups(router: Router): void {
   router.add('GET', '/groups/:id/invites', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (!isOwner) return send(res, 403, { error: 'Only the owner can view invites' });
-    const list = await repo.listInvites?.(params.id) || [];
+    const list = await repo.listInvites?.(params['id']) || [];
     return send(res, 200, list);
   }));
 
@@ -148,7 +148,7 @@ export function registerGroups(router: Router): void {
     const self = await users.findById(userId);
     const email = String(self?.email || '').toLowerCase();
     if (!email) return send(res, 200, []);
-    const list: Invite[] = (await repo.listInvites?.(params.id)) ?? [];
+    const list: Invite[] = (await repo.listInvites?.(params['id'])) ?? [];
     const mine = list.filter((i) => (String(i.email || '').toLowerCase() === email));
     return send(res, 200, mine.map((i) => ({ id: i.id, email: i.email, created_at: i.created_at, accepted_at: i.accepted_at })));
   }));
@@ -157,33 +157,33 @@ export function registerGroups(router: Router): void {
   router.add('POST', '/groups/:id/invites/:inviteId/accept', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const users = userRepo(); const repo = budgetRepo();
-    const inv = repo.findInviteById ? await repo.findInviteById(params.inviteId) : null;
-    if (!inv || inv.budget_id !== params.id) return send(res, 404, { error: 'Invite not found' });
+    const inv = repo.findInviteById ? await repo.findInviteById(params['inviteId']) : null;
+    if (!inv || inv.budget_id !== params['id']) return send(res, 404, { error: 'Invite not found' });
     const self = await users.findById(userId);
     const email = String(self?.email || '').toLowerCase();
     if (!email || email !== String(inv.email || '').toLowerCase()) return send(res, 403, { error: 'Forbidden' });
     if (inv.accepted_at) return send(res, 400, { error: 'Already accepted' });
     // Mark accepted and add membership + ensure participant
     await repo.markInviteAccepted?.(inv.token, userId);
-    if (repo.addMember) await repo.addMember(params.id, userId);
+    if (repo.addMember) await repo.addMember(params['id'], userId);
     try {
       const name = (email.split('@')[0] || 'You');
       const income = self?.default_income || 0;
-      await repo.addParticipant?.(params.id, name, income, email);
+      await repo.addParticipant?.(params['id'], name, income, email);
     } catch {}
-    return send(res, 200, { budget_id: params.id, status: 'accepted' });
+    return send(res, 200, { budget_id: params['id'], status: 'accepted' });
   }));
 
   // Reject invite by inviteId (recipient)
   router.add('POST', '/groups/:id/invites/:inviteId/reject', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const users = userRepo(); const repo = budgetRepo();
-    const inv = repo.findInviteById ? await repo.findInviteById(params.inviteId) : null;
-    if (!inv || inv.budget_id !== params.id) return send(res, 404, { error: 'Invite not found' });
+    const inv = repo.findInviteById ? await repo.findInviteById(params['inviteId']) : null;
+    if (!inv || inv.budget_id !== params['id']) return send(res, 404, { error: 'Invite not found' });
     const self = await users.findById(userId);
     const email = String(self?.email || '').toLowerCase();
     if (!email || email !== String(inv.email || '').toLowerCase()) return send(res, 403, { error: 'Forbidden' });
-    if (repo.revokeInvite) await repo.revokeInvite(params.inviteId);
+    if (repo.revokeInvite) await repo.revokeInvite(params['inviteId']);
     return send(res, 200, { status: 'rejected' });
   }));
 
@@ -231,29 +231,29 @@ export function registerGroups(router: Router): void {
     const body = await readJson<{ name?: string }>(req).catch(() => ({} as unknown as { name?: string }));
     const name = String(body?.name || '').trim();
     const repo = budgetRepo();
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (!isOwner) return send(res, 403, { error: 'Only the owner can rename the group' });
     // Update in memory or SQL
     if (repo.createBudget && !repo.updateBudgetName) {
       // Memory path: mutate internal state
       // Not exposed, so no-op for memory; return 200
-      return send(res, 200, { id: params.id, name });
+      return send(res, 200, { id: params['id'], name });
     }
     if (repo.updateBudgetName) {
-      const out = await repo.updateBudgetName(params.id, name);
-      return send(res, 200, out || { id: params.id, name });
+      const out = await repo.updateBudgetName(params['id'], name);
+      return send(res, 200, out || { id: params['id'], name });
     }
-    return send(res, 200, { id: params.id, name });
+    return send(res, 200, { id: params['id'], name });
   }));
 
   // Delete group (owner only)
   router.add('DELETE', '/groups/:id', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (!isOwner) return send(res, 403, { error: 'Only the owner can delete the group' });
     if (repo.deleteBudget) {
-      await repo.deleteBudget(params.id);
+      await repo.deleteBudget(params['id']);
       return send(res, 204);
     }
     return send(res, 204);
@@ -263,14 +263,14 @@ export function registerGroups(router: Router): void {
   router.add('DELETE', '/groups/:id/invites/:inviteId', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (!isOwner) return send(res, 403, { error: 'Only the owner can revoke invites' });
     if (repo.revokeInvite) {
-      await repo.revokeInvite(params.inviteId);
+      await repo.revokeInvite(params['inviteId']);
     } else if (repo.listInvites) {
-      const list: Invite[] = await repo.listInvites(params.id);
-      const rest = list.filter((i) => i.id !== params.inviteId);
-      if (repo.setInvitesForBudget) await repo.setInvitesForBudget(params.id, rest);
+      const list: Invite[] = await repo.listInvites(params['id']);
+      const rest = list.filter((i) => i.id !== params['inviteId']);
+      if (repo.setInvitesForBudget) await repo.setInvitesForBudget(params['id'], rest);
     }
     return send(res, 204);
   }));
@@ -279,14 +279,14 @@ export function registerGroups(router: Router): void {
   router.add('POST', '/groups/:id/invites/:inviteId/resend', withAuth('user', async (req, res, params) => {
     const userId = (req.user?.id as string) || 'anon';
     const repo = budgetRepo();
-    const isOwner = await repo.isOwner?.(params.id, userId);
+    const isOwner = await repo.isOwner?.(params['id'], userId);
     if (!isOwner) return send(res, 403, { error: 'Only the owner can resend invites' });
     if (repo.resendInvite) {
-      const out = await repo.resendInvite(params.inviteId);
+      const out = await repo.resendInvite(params['inviteId']);
       return send(res, 200, out);
     }
-    const list: Invite[] = (await repo.listInvites?.(params.id)) ?? [];
-    const i = list.find((x) => x.id === params.inviteId);
+    const list: Invite[] = (await repo.listInvites?.(params['id'])) ?? [];
+    const i = list.find((x) => x.id === params['inviteId']);
     if (i) i.created_at = new Date().toISOString();
     return send(res, 200, i || {});
   }));

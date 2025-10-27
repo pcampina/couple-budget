@@ -2,211 +2,117 @@
 
 [![CI](https://github.com/pcampina/couple-budget/actions/workflows/ci.yml/badge.svg)](https://github.com/pcampina/couple-budget/actions/workflows/ci.yml)
 
-## Hosting
+Budget planning for couples and small groups, built with Angular (frontend) and a lightweight Node.js API backed by PostgreSQL.
 
-- **Frontend** — Deployed to an AWS S3 bucket and served via CloudFront for global content delivery. The infrastructure is managed by CloudFormation (`infra/frontend-s3-cloudfront.yaml`).
-- **API** — A Dockerized Node.js application running on AWS Fargate, managed by an ECS service. It connects to a Postgres database hosted on RDS. The infrastructure is managed by CloudFormation (`infra/backend-fargate.yaml`, `infra/rds-postgress.yaml`).
+## Architecture at a glance
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.2.1.
+| Component | Description |
+|-----------|-------------|
+| **Frontend** | Angular SPA served from an S3 bucket behind CloudFront (`infra/frontend-s3-cloudfront.yaml`). |
+| **API** | Node.js HTTP server packaged as a Docker image and deployed to AWS Fargate (`infra/backend-fargate.yaml`). |
+| **Database** | Amazon RDS for PostgreSQL, credentials stored in AWS Secrets Manager (`infra/rds-postgress.yaml`). |
+| **Networking** | VPC with private subnets and interface VPC endpoints for ECR, CloudWatch Logs, Secrets Manager and KMS to keep Fargate fully private (`infra/network.yaml`). |
 
-## Overview
+## Local development
 
-- Multi-participant budgeting: transactions are split proportionally by each participant's income.
-- Participants are dynamic: starts with two, you can add/remove more (guard keeps at least two).
-- Persistence via API: when API mode is enabled, data persists in Postgres; otherwise, the UI keeps data in-memory for the session.
-- API docs: `api/README.md`
+1. **Prerequisites**
+   - Node.js 20.x and npm
+   - Docker (optional but recommended for Postgres/Mailhog)
+   - PostgreSQL 16 locally or a connection string you can reach from your machine
 
-## Development server
+2. **Bootstrap the environment**
+   ```bash
+   cp .env.example .env                # configure API + frontend flags
+   docker compose up -d db mailhog     # optional helpers (Postgres + SMTP)
+   npm ci                              # install dependencies
+   npm run db:migrate                  # create tables (uses SUPABASE_DB_URL or DB_* vars)
+   ```
 
-Recommended local setup (API + Frontend + Mailhog):
+3. **Run the stack**
+   ```bash
+   npm run api     # http://localhost:3333
+   npm start       # http://localhost:4200
+   ```
 
-```bash
-# 1) Copy environment and adjust values
-cp .env.example .env
+   - To point the UI at the API set `USE_API=true` and `API_URL=http://localhost:3333` in `.env` before running `npm start` (the `scripts/gen-config.mjs` task injects these values).
+   - Without a database connection the API falls back to an in-memory store; useful for quick demos but not persistent.
 
-# 2) Start Postgres and Mailhog (optional if you have local services)
-# docker compose up -d db mailhog
+4. **Mailhog (optional)**
+   - Web UI: `http://localhost:8025`
+   - SMTP: `localhost:1025`
 
-# 3) Run DB migrations (creates tables)
-npm run db:migrate
+## Database connectivity & TLS
 
-# 4) Start the API (http://localhost:3333 by default)
-npm run api
+The API constructs the Postgres connection from either:
 
-# 5) In a separate terminal, start the frontend (http://localhost:4200)
-npm start
-```
+1. `SUPABASE_DB_URL` (full connection string) **or**
+2. `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`
 
-Notes:
-- Do not commit `.env`. Use `.env.example` as a template.
-- `npm start` generates `public/config.js` from `.env` (via `scripts/gen-config.mjs`).
-- For API mode, set at least `USE_API=true` and `API_URL=http://localhost:3333`.
-- For DB persistence, set `SUPABASE_DB_URL` and run migrations. If unset, the API uses an in-memory store.
+When the host is not `localhost/127.0.0.1`, TLS is enabled automatically with `rejectUnauthorized=false`; this allows the container to talk to the RDS instance even when the AWS CA bundle is not bundled in the image. On Fargate the stack also sets `NODE_TLS_REJECT_UNAUTHORIZED=0`, so you do **not** have to manage certificates manually.
 
-### Email (Mailhog)
-
-For local email testing, the API can send invites via SMTP. Use Mailhog:
-
-```
-docker compose up -d mailhog
-# Web UI: http://localhost:8025
-# SMTP: localhost:1025
-```
-
-Set in `.env` (already defaults for Mailhog):
-
-```
-PUBLIC_APP_URL=http://localhost:4200
-SMTP_HOST=localhost
-SMTP_PORT=1025
-SMTP_FROM=CoupleBudget <noreply@example.com>
-```
-
-Invite emails include a link such as `http://localhost:4200/invite/<token>`.
-
-## Code scaffolding
-
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+For local development you typically want:
 
 ```bash
-ng generate component component-name
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=appdb
+DB_USER=postgres
+DB_PASSWORD=postgres
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+## Deploying manually from your workstation
+
+`infra/deploy-all-local.sh` wires everything up in the right order (certificates, network, ECR, RDS, backend, frontend, DNS) and now accepts an optional `IMAGE_TAG`:
 
 ```bash
-ng generate --help
+cd infra
+IMAGE_TAG=$(git rev-parse --short HEAD) ./deploy-all-local.sh
 ```
 
-## Building
+The script:
 
-To build the project run:
+- Builds the backend image with Buildx for `linux/amd64` and `linux/arm64`, pushes both `:IMAGE_TAG` and `:latest`.
+- Passes the same `IMAGE_TAG` to the backend CloudFormation stack so Fargate pulls the freshly pushed image.
+
+Prerequisites: AWS CLI v2 logged in, Docker with Buildx enabled, and permissions to create CloudFormation stacks, ECR repos and push images.
+
+## GitHub Actions
+
+| Workflow | Trigger | What it does |
+|----------|---------|--------------|
+| `ci.yml` | PRs / pushes to `main` | Installs dependencies, runs lint (`npm run lint:ids`) and tests (`npm run test:ci`). |
+| `deploy-infra.yml` | Manual (`workflow_dispatch`) | Deploys the CloudFormation stacks in dependency order. Inputs: `hostedZoneId`, `projectName`, `imageTag`. Run this when the infrastructure or stack parameters change. |
+| `deploy-app.yml` | Push to `main` (or manual) | Builds the Docker image (root `Dockerfile`), pushes both `:latest` and `:${{ github.sha }}`, renders the ECS task definition with the new image, and forces a new deployment. To deploy from a commit message use `[deploy-backend]`; you can also trigger it from the Actions tab. |
+| `deploy-frontend.yml` (job inside `deploy-app.yml`) | Same trigger | Builds Angular, syncs the generated `dist/` to the S3 bucket and invalidates CloudFront. |
+| `codeql.yml` | Scheduled / pushes | Static application security analysis. |
+
+Secrets required for deployment workflows:
+
+- `AWS_ACCOUNT_ID`
+- A GitHub OIDC role (`GitHubActionRole`) with permissions for CloudFormation, ECR, ECS, S3, CloudFront, Secrets Manager and RDS.
+
+## Troubleshooting deployment
+
+- **ECS task fails with `MODULE_NOT_FOUND` or migrations missing**: ensure you ran `npm run build:api` before building the image (the Dockerfile already does this) and that `ImageTag` in the backend stack points to the image you just pushed.
+- **Cannot reach Secrets Manager / KMS**: the backend template provisions interface endpoints and the task execution role allows `secretsmanager:GetSecretValue` + `kms:Decrypt`. If you removed those resources, redeploy the backend stack.
+- **Health check failing**: the target group now checks `GET /health`; the API responds `200` even before the database is available.
+- **TLS errors when connecting to RDS**: handled automatically by the stack (`NODE_TLS_REJECT_UNAUTHORIZED=0`) and the API connection builder. For local runs against AWS RDS you may need to export the same env variable.
+
+## Testing matrix
 
 ```bash
-ng build
+npm run lint:ids   # validates UUID usage
+npm run test:ci    # Vitest unit tests
+npm run build      # Angular production build
 ```
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## Project layout
 
-## Running unit tests
+- `src/` – Angular application.
+- `api/` – Node.js HTTP API (see `api/routes` and `api/db.ts`).
+- `infra/` – CloudFormation templates + helper script.
+- `.github/workflows/` – CI/CD pipelines.
 
-This project uses Vitest for unit tests.
+## License
 
-Scripts:
-
-```bash
-# Run all tests once
-npm test
-
-# Watch mode
-npm run test:watch
-
-# CI mode
-npm run test:ci
-
-Environment: jsdom; path aliases mirror `tsconfig.json`.
-
-### API Server
-
-This repository now includes a minimal Node HTTP API that exposes the core budgeting features (participants, transactions, allocations) with no external dependencies.
-
-- Full API docs: `api/README.md`
-
-Run the API locally:
-
-```bash
-npm run api
-```
-
-It starts on `http://localhost:3333` with CORS enabled. Highlights:
-
-- Auth: `POST /auth/register`, `POST /auth/login` → JWT, `GET /auth/verify`
-- Participants: `GET /participants`, `POST /participants` (name, email?, income), `PATCH`, `DELETE`
-- Transactions: `GET /expenses?page=&limit=` (paginated); `POST` (requires 1 participant; owned by user), `PATCH`/`DELETE` (owner only)
-- Stats: `GET /stats` — snapshot with `participants`, `transactions`, `participantShares`, `transactionsWithAllocations`, `totalIncome`, `totalTransactions`, `totalsPerParticipant`
-- Activities: `GET /activities?page=&limit=` — user activity log (paginated)
-
-Persistence:
-- With `SUPABASE_DB_URL` set: uses Postgres (run `npm run db:migrate` first).
-- Without `SUPABASE_DB_URL`: falls back to in-memory store (non-persistent).
-
-#### Authentication
-
-- Backend: set `AUTH_JWT_SECRET` (HS256) in `.env`.
-- Roles: GET endpoints require `user`. Mutations for participants require `admin`; transactions require `user` (owner only).
-
-### Frontend Integration
-
-The Angular app can run fully client-side (in-memory) or consume the API.
-
-- Default (client-only): no configuration required; state is in-memory for the session.
-- API mode: enable the flag via `.env` (recommended) or uncomment the snippet in `src/index.html`:
-
-```html
-<script>
-  window.__USE_API__ = true;
-  window.__API_URL__ = 'http://localhost:3333';
-  // start the server with: npm run api
-  // then: npm start
-  // the UI will reflect server state
-}
-</script>
-```
-
-Alternatively, use `.env` + `npm start`:
-
-```
-USE_API=true
-API_URL=http://localhost:3333
-```
-
-`scripts/gen-config.mjs` will emit a real boolean for `__USE_API__`.
-
-In API mode, local persistence is disabled; data lives on the API and, when configured, in Postgres.
-
-## Running end-to-end tests
-
-For end-to-end (e2e) testing, run:
-
-```bash
-ng e2e
-```
-
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
-
-## Notes
-
-- Tests run with Vitest; Karma is not used.
-- ID generation: use native random UUIDs
-  - Frontend (browser): `crypto.randomUUID()` directly
-  - API (Node): `uuid()` exported from `api/utils.ts` (uses `node:crypto` randomUUID)
-  - Check locally: `npm run lint:ids` (fails on non-UUID patterns)
-
-## Security
-
-- See `SECURITY.md` for reporting guidelines.
-- CI builds and AWS deployments do not embed secrets; runtime config is generated without sensitive values.
-
-## Contributing
-
-- See `CONTRIBUTING.md` for commit style and development tips.
-
-## Additional Resources
-
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
-
-## Domain model
-
-- `Participant`: `{ id, name, email?, income }`
-- `Transaction`: `{ id, name, total }`
-- Split logic: `splitByIncome(total, participants[]) -> Record<participantId, amount>`
-
-## Persistence
-
-- API mode: data persists in Postgres when `SUPABASE_DB_URL` is configured and migrations are applied; otherwise, the API uses an in-memory fallback (non-persistent).
-- Client-only mode: state is kept in-memory (no localStorage persistence in the current version).
-
-## UI behavior
-
-- Configuration: edit participant names and incomes; add/remove participants.
-- Transactions table: dynamically renders a column per participant, with totals per participant in the footer.
+MIT — see `LICENSE`.

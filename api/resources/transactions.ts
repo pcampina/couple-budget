@@ -54,9 +54,11 @@ export function registerTransactions(router: Router): void {
           await repo.addParticipant(budgetId, name, 0, email);
           participants = await repo.listParticipants(budgetId);
         }
-      } catch {}
+      } catch (e) {
+        console.error('Error adding participant for transaction creation:', e);
+      }
       if (!participants || participants.length === 0) {
-        if (process.env.NODE_ENV !== 'test') return send(res, 400, { error: 'Add at least one participant before creating transactions' });
+        if (process.env['NODE_ENV'] !== 'test') return send(res, 400, { error: 'Add at least one participant before creating transactions' });
       }
     }
     const t = await repo.addTransaction(budgetId, userId, name, total, type, paid);
@@ -74,14 +76,14 @@ export function registerTransactions(router: Router): void {
     if (repo.hasAccess && !(await repo.hasAccess(budgetId, userId))) return send(res, 403, { error: 'Forbidden' });
     type Body = { name?: string; total?: number; type?: string; paid?: boolean };
     const body = await readJson<Body>(req);
-    const updated = await repo.updateTransaction(budgetId, params.id, {
+    const updated = await repo.updateTransaction(budgetId, params['id'], {
       ...(body.name != null ? { name: String(body.name).trim() } : {}),
       ...(body.total != null ? { total: Math.max(0, Number(body.total) || 0) } : {}),
       ...(body.type != null ? { type_code: String(body.type).trim().toLowerCase() } : {}),
       ...(body.paid != null ? { paid: !!body.paid } : {}),
     }, userId);
     if (!updated) return send(res, 404, { error: 'Not found' });
-    try { await repo.logActivity(userId, budgetId, 'update-transaction', 'transaction', params.id, body); } catch {}
+    try { await repo.logActivity(userId, budgetId, 'update-transaction', 'transaction', params['id'], body); } catch {}
     return send(res, 200, updated);
   }));
 
@@ -96,9 +98,9 @@ export function registerTransactions(router: Router): void {
     if (!hasAccess) return send(res, 403, { error: 'Forbidden' });
     const isOwner = repo.isOwner ? await repo.isOwner(budgetId, userId) : true;
     if (!isOwner) return send(res, 403, { error: 'Only the owner can remove transactions' });
-    const deleted = await repo.deleteTransaction(budgetId, params.id, userId);
+    const deleted = await repo.deleteTransaction(budgetId, params['id'], userId);
     if (!deleted) return send(res, 404, { error: 'Not found' });
-    try { await repo.logActivity(userId, budgetId, 'delete-transaction', 'transaction', params.id, {}); } catch {}
+    try { await repo.logActivity(userId, budgetId, 'delete-transaction', 'transaction', params['id'], {}); } catch {}
     return send(res, 204);
   }));
 }

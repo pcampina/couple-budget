@@ -51,7 +51,7 @@ deploy_stack() {
     --region "${region}" \
     --template-file "${template_file}" \
     --stack-name "${stack_name}" \
-    --parameter-overrides ${params[*]} \
+    --parameter-overrides "${params[@]}" \
     --capabilities ${CFN_CAPS} \
     --no-fail-on-empty-changeset
 }
@@ -101,22 +101,46 @@ echo "\n-> Building and pushing initial 'latest' image to ECR..."
 ECR_REPO_NAME="${PROJECT_NAME}-api"
 ECR_REGISTRY="$(aws sts get-caller-identity --query Account --output text).dkr.ecr.${REGION_REGIONAL}.amazonaws.com"
 aws ecr get-login-password --region "${REGION_REGIONAL}" | docker login --username AWS --password-stdin "${ECR_REGISTRY}"
-docker build -t "${ECR_REGISTRY}/${ECR_REPO_NAME}:latest" -f ../api/Dockerfile ../
-docker push "${ECR_REGISTRY}/${ECR_REPO_NAME}:latest"
+
+# Allow caller to override IMAGE_TAG; otherwise use short git SHA (fallback to timestamp)
+if [[ -z "${IMAGE_TAG:-}" ]]; then
+  if git rev-parse --short HEAD >/dev/null 2>&1; then
+    IMAGE_TAG="$(git rev-parse --short HEAD)"
+  else
+    IMAGE_TAG="$(date +%Y%m%d%H%M%S)"
+  fi
+fi
+echo "Using IMAGE_TAG=${IMAGE_TAG}"
+
+# Build and push a multi-platform image to support both local (arm64) and Fargate (amd64) architectures.
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t "${ECR_REGISTRY}/${ECR_REPO_NAME}:${IMAGE_TAG}" \
+  -t "${ECR_REGISTRY}/${ECR_REPO_NAME}:latest" \
+  --push -f ../Dockerfile ../
 echo "Initial image pushed successfully."
 
-# 5) Backend (depends on Network and the initial ECR image)
+# 5) RDS (depends on Network SG)
+RDS_STACK_NAME="${PROJECT_NAME}-rds"
+RDS_TEMPLATE="rds-postgress.yaml"
+
+deploy_stack "${REGION_REGIONAL}" "${RDS_TEMPLATE}" "${RDS_STACK_NAME}" \
+  "ProjectName=${PROJECT_NAME}" \
+  "DBInstanceClass=db.t4g.micro" \
+  "DBName=appdb" \
+  "AllocatedStorage=20" \
+  "MaxAllocatedStorage=100" \
+  "EngineVersion=16.10" \
+  "MultiAZ=false" \
+  "PubliclyAccessible=false"
+
+# 6) Backend (depends on Network, ECR image, and RDS)
 BACKEND_STACK_NAME="${PROJECT_NAME}-backend"
 BACKEND_TEMPLATE="backend-fargate.yaml"
 
 # Deploy the backend stack, which will now pull the 'latest' image we just pushed.
-deploy_stack "${REGION_REGIONAL}" "${BACKEND_TEMPLATE}" "${BACKEND_STACK_NAME}" "ProjectName=${PROJECT_NAME}" "ImageTag=latest"
-
-# 6) RDS (depends on Backend SG)
-RDS_STACK_NAME="${PROJECT_NAME}-rds"
-RDS_TEMPLATE="rds-postgress.yaml"
-
-deploy_stack "${REGION_REGIONAL}" "${RDS_TEMPLATE}" "${RDS_STACK_NAME}" "ProjectName=${PROJECT_NAME}"
+deploy_stack "${REGION_REGIONAL}" "${BACKEND_TEMPLATE}" "${BACKEND_STACK_NAME}" \
+  "ProjectName=${PROJECT_NAME}" \
+  "ImageTag=${IMAGE_TAG}"
 
 # 7) Frontend (uses global cert)
 FRONTEND_STACK_NAME="${PROJECT_NAME}-frontend"

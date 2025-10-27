@@ -7,7 +7,7 @@ Parameters:
     Default: angular-node-app
   NodePort:
     Type: Number
-    Default: 3000
+    Default: 3333
   ImageTag:
     Type: String
     Description: The tag of the Docker image to deploy.
@@ -26,32 +26,22 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
-
-  # Security Group for the Application Load Balancer
-  AlbSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow HTTP traffic to ALB
-      VpcId: !ImportValue
-        'Fn::Sub': '${ProjectName}:VpcId'
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: 80
-          ToPort: 80
-          CidrIp: 0.0.0.0/0
-
-  # Security Group for the Fargate Service
-  FargateServiceSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Allow traffic from ALB to Fargate tasks
-      VpcId: !ImportValue
-        'Fn::Sub': '${ProjectName}:VpcId'
-      SecurityGroupIngress:
-        - IpProtocol: tcp
-          FromPort: !Ref NodePort
-          ToPort: !Ref NodePort
-          SourceSecurityGroupId: !Ref AlbSecurityGroup
+      Policies:
+        - PolicyName: !Sub '${ProjectName}-ecs-execution-secrets'
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !ImportValue { 'Fn::Sub': '${ProjectName}:DbSecretArn' }
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                Resource: !Sub 'arn:aws:kms:${AWS::Region}:${AWS::AccountId}:key/*'
+                Condition:
+                  StringEquals:
+                    kms:ViaService: !Sub 'secretsmanager.${AWS::Region}.amazonaws.com'
 
   # Application Load Balancer
   ApplicationLoadBalancer:
@@ -62,8 +52,7 @@ Resources:
       Subnets:
         - !ImportValue { 'Fn::Sub': '${ProjectName}:PublicSubnetIdA' }
         - !ImportValue { 'Fn::Sub': '${ProjectName}:PublicSubnetIdB' }
-      SecurityGroups:
-        - !Ref AlbSecurityGroup
+      SecurityGroups: [!ImportValue { 'Fn::Sub': '${ProjectName}:AlbSecurityGroupId' }]
 
   # ALB Listener for HTTPS traffic
   AlbListener:
@@ -106,7 +95,7 @@ Resources:
       Protocol: HTTP
       TargetType: ip
       HealthCheckProtocol: HTTP
-      HealthCheckPath: '/'
+      HealthCheckPath: '/health'
       HealthCheckIntervalSeconds: 30
       HealthCheckTimeoutSeconds: 5
       HealthyThresholdCount: 2
@@ -136,9 +125,23 @@ Resources:
           LogConfiguration:
             LogDriver: awslogs
             Options:
-              awslogs-group: !Ref LogGroup
-              awslogs-region: !Ref AWS::Region
-              awslogs-stream-prefix: ecs
+              awslogs-group: !Sub '/ecs/${ProjectName}'
+              awslogs-region: !Ref 'AWS::Region'
+              awslogs-stream-prefix: 'ecs'
+          Secrets:
+            - Name: DB_PASSWORD
+              ValueFrom: !ImportValue { 'Fn::Sub': '${ProjectName}:DbSecretArn' }
+          Environment:
+            - Name: DB_HOST
+              Value: !ImportValue { 'Fn::Sub': '${ProjectName}:DbEndpointAddress' }
+            - Name: DB_PORT
+              Value: !ImportValue { 'Fn::Sub': '${ProjectName}:DbEndpointPort' }
+            - Name: DB_NAME
+              Value: !ImportValue { 'Fn::Sub': '${ProjectName}:DbName' }
+            - Name: DB_USER
+              Value: !ImportValue { 'Fn::Sub': '${ProjectName}:DbMasterUsername' }
+            - Name: NODE_TLS_REJECT_UNAUTHORIZED
+              Value: '0'
 
   # ECS Service
   EcsService:
@@ -157,8 +160,7 @@ Resources:
           Subnets:
             - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdA' }
             - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdB' }
-          SecurityGroups:
-            - !Ref FargateServiceSecurityGroup
+          SecurityGroups: [!ImportValue { 'Fn::Sub': '${ProjectName}:FargateServiceSecurityGroupId' }]
       LoadBalancers:
         - TargetGroupArn: !Ref EcsTargetGroup
           ContainerName: !Sub '${ProjectName}-container'
@@ -182,7 +184,7 @@ Resources:
         - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
-          SourceSecurityGroupId: !Ref FargateServiceSecurityGroup
+          SourceSecurityGroupId: !ImportValue { 'Fn::Sub': '${ProjectName}:FargateServiceSecurityGroupId' }
       Tags:
         - Key: Name
           Value: !Sub '${ProjectName}-vpc-endpoint-sg'
@@ -221,11 +223,46 @@ Resources:
       ServiceName: !Sub 'com.amazonaws.${AWS::Region}.s3'
       RouteTableIds: !Split [',', { 'Fn::ImportValue': !Sub '${ProjectName}:PrivateRouteTableIds' }]
 
+  # VPC Endpoint for CloudWatch Logs - Allows Fargate to send logs without public internet
+  CloudWatchLogsVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.logs'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdA' }
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdB' }
+      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+      PrivateDnsEnabled: true
+
+  # VPC Endpoint for Secrets Manager - Allows Fargate to fetch secrets without public internet
+  SecretsManagerVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.secretsmanager'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdA' }
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdB' }
+      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+      PrivateDnsEnabled: true
+
+  # VPC Endpoint for KMS - Required for decrypting secrets fetched from Secrets Manager
+  KmsVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !ImportValue { 'Fn::Sub': '${ProjectName}:VpcId' }
+      ServiceName: !Sub 'com.amazonaws.${AWS::Region}.kms'
+      VpcEndpointType: Interface
+      SubnetIds:
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdA' }
+        - !ImportValue { 'Fn::Sub': '${ProjectName}:PrivateSubnetIdB' }
+      SecurityGroupIds: [!Ref VpcEndpointSecurityGroup]
+      PrivateDnsEnabled: true
+
 Outputs:
   ApiUrl:
     Description: URL of the application API
     Value: !Sub 'https://${ApplicationLoadBalancer.DNSName}'
-  FargateServiceSecurityGroupId:
-    Value: !Ref FargateServiceSecurityGroup
-    Export:
-      Name: !Sub '${ProjectName}:FargateServiceSecurityGroupId'

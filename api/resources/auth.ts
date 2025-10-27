@@ -5,7 +5,7 @@ import { Role } from '../types/domain.js';
 import { signHS256 } from '../auth.js';
 
 function ensureSecret(): string {
-  return process.env.AUTH_JWT_SECRET || 'dev-secret';
+  return process.env['AUTH_JWT_SECRET'] || 'dev-secret';
 }
 
 export function registerAuth(router: Router): void {

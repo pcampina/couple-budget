@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { localRequest } from '../test-utils';
+import { localRequest } from '../test-utils.js';
 
 describe('shared transactions permissions', () => {
   let handler: any;
@@ -21,9 +21,9 @@ describe('shared transactions permissions', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    process.env.NO_LISTEN = '1';
-    process.env.AUTH_JWT_SECRET = 'dev-secret';
-    const { createApp } = await import('../app');
+    process.env['NO_LISTEN'] = '1';
+    process.env['AUTH_JWT_SECRET'] = 'dev-secret';
+    const { createApp } = await import('../app.js');
     handler = createApp();
 
     const registerOwner = await request('POST', '/auth/register', { email: 'owner@example.com', name: 'Owner', password: 'secret123' });

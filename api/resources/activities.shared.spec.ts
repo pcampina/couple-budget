@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { localRequest } from '../test-utils';
+import { localRequest } from '../test-utils.js';
 
 function fakeToken(sub: string, roles: string[] = ['user']): string {
   const header = Buffer.from(JSON.stringify({ alg: 'HS256', typ: 'JWT' })).toString('base64').replace(/=+$/g, '').replace(/\+/g, '-').replace(/\//g, '_');
@@ -17,11 +17,11 @@ describe('activities shared access', () => {
 
   beforeEach(async () => {
     vi.resetModules();
-    process.env.NO_LISTEN = '1';
-    delete process.env.AUTH_JWT_SECRET;
-    const appMod = await import('../app');
+    process.env['NO_LISTEN'] = '1';
+    delete process.env['AUTH_JWT_SECRET'];
+    const appMod = await import('../app.js');
     handler = appMod.createApp();
-    const repoMod = await import('../repositories/budgetRepo');
+    const repoMod = await import('../repositories/budgetRepo.js');
     repo = repoMod.budgetRepo();
   });
 
@@ -53,4 +53,3 @@ describe('activities shared access', () => {
     expect(actions).toEqual(['add-transaction', 'update-transaction']);
   });
 });
-

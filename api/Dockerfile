@@ -1,37 +1,34 @@
 # Stage 1: Build the application
 FROM node:lts-bookworm-slim AS builder
-
 WORKDIR /app
 
-# Copy application dependency manifests to the container image.
-# A wildcard is used to ensure both package.json AND package-lock.json are copied.
-# Copying this separately prevents re-running npm install on every code change.
+# 1. Install ALL dependencies (including dev)
 COPY package*.json ./
-COPY api/tsconfig.json api/
-COPY tsconfig.json ./
+RUN npm ci
 
-# Install dependencies
-RUN npm install --omit=dev
-
-# Copy the rest of the source files
+# 2. Copy source code and build the app
 COPY . .
-
-# Build the API
 RUN npm run build:api
 
+# 3. Prune dev dependencies for a clean production node_modules
+RUN npm prune --omit=dev
 
 # Stage 2: Production environment
 FROM node:lts-bookworm-slim
-
 WORKDIR /app
+ENV NODE_ENV=production
 
-# Copy built application from the builder stage
-COPY --from=builder /app/dist-api .
+# Copy production-only node_modules and built API from builder stage
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package.json .
+COPY --from=builder /app/dist-api ./dist-api
+
+# Copy knex config and migrations for running migrations
+COPY api/knexfile.cjs ./
+COPY api/migrations ./migrations
 
 # Expose the port the app runs on
-EXPOSE 3000
+EXPOSE 3333
 
 # Start the application
-CMD [ "node", "server.js" ]
+CMD ["sh", "-c", "node ./node_modules/knex/bin/cli.js --knexfile knexfile.cjs migrate:latest && node dist-api/server.js"]
